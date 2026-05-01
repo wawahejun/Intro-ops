@@ -10,6 +10,7 @@ backends:
       - ops/reduce_sum/nvidia/reduce_sum_cuda.cu
     headers:
       - ops/reduce_sum/nvidia/reduce_sum_cuda.h
+      - ops/reduce_sum/nvidia/kernel.cuh
     symbols:
       create: oprt_create_reduce_sum_descriptor_nvidia
       workspace: oprt_get_reduce_sum_workspace_size_nvidia
@@ -42,4 +43,3 @@ performance_model:
   bound: memory
   bytes: "(numel + rows) * elem_bytes"
   flops: "numel"
-

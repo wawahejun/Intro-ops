@@ -4,7 +4,7 @@
 #include "operator_runtime/elementwise.h"
 #include "operator_runtime/tensor_checks.h"
 #include "operator_runtime/cuda_helpers.h"
-#include "ops/common/nvidia/elementwise.cuh"
+#include "ops/vector_add/nvidia/kernel.cuh"
 
 #include <cuda_fp16.h>
 
@@ -25,8 +25,8 @@ template <typename T>
 oprt_status_t launch_vector_add(const VectorAddDescriptor *desc, void *out, const void *a, const void *b, oprt_stream_t stream) {
     constexpr int threads = 256;
     int blocks = oprt::blocks_for(desc->elements, threads);
-    oprt::nvidia::binary_contiguous_kernel<T><<<blocks, threads, 0, oprt::as_cuda_stream(stream)>>>(
-        static_cast<T *>(out), static_cast<const T *>(a), static_cast<const T *>(b), desc->elements, oprt::nvidia::AddOp{});
+    oprt::vector_add::nvidia::vector_add_contiguous_kernel<T><<<blocks, threads, 0, oprt::as_cuda_stream(stream)>>>(
+        static_cast<T *>(out), static_cast<const T *>(a), static_cast<const T *>(b), desc->elements);
     OPRT_CUDA_RETURN_IF_ERROR(cudaGetLastError());
     return OPRT_SUCCESS;
 }

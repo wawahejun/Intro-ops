@@ -10,6 +10,7 @@ backends:
       - ops/softmax/nvidia/softmax_cuda.cu
     headers:
       - ops/softmax/nvidia/softmax_cuda.h
+      - ops/softmax/nvidia/kernel.cuh
     symbols:
       create: oprt_create_softmax_descriptor_nvidia
       workspace: oprt_get_softmax_workspace_size_nvidia
@@ -42,4 +43,3 @@ performance_model:
   bound: mixed
   bytes: "5 * numel * elem_bytes"
   flops: "4 * numel"
-

@@ -3,10 +3,9 @@
 #include "operator_runtime/descriptor.h"
 #include "operator_runtime/tensor_checks.h"
 #include "operator_runtime/cuda_helpers.h"
+#include "ops/softmax/nvidia/kernel.cuh"
 
 #include <cuda_runtime.h>
-#include <float.h>
-#include <math.h>
 
 namespace {
 
@@ -21,47 +20,6 @@ struct SoftmaxDescriptor final : oprt_operator_descriptor {
         return "softmax";
     }
 };
-
-__global__ void softmax_rowwise_kernel(float *out, const float *in, int64_t rows, int64_t cols) {
-    extern __shared__ float smem[];
-    int row = blockIdx.x;
-    float local_max = -FLT_MAX;
-    for (int64_t col = threadIdx.x; col < cols; col += blockDim.x) {
-        float value = in[int64_t(row) * cols + col];
-        local_max = fmaxf(local_max, value);
-    }
-    smem[threadIdx.x] = local_max;
-    __syncthreads();
-
-    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (threadIdx.x < stride) {
-            smem[threadIdx.x] = fmaxf(smem[threadIdx.x], smem[threadIdx.x + stride]);
-        }
-        __syncthreads();
-    }
-    float row_max = smem[0];
-
-    float local_sum = 0.0f;
-    for (int64_t col = threadIdx.x; col < cols; col += blockDim.x) {
-        float value = expf(in[int64_t(row) * cols + col] - row_max);
-        out[int64_t(row) * cols + col] = value;
-        local_sum += value;
-    }
-    smem[threadIdx.x] = local_sum;
-    __syncthreads();
-
-    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (threadIdx.x < stride) {
-            smem[threadIdx.x] += smem[threadIdx.x + stride];
-        }
-        __syncthreads();
-    }
-    float row_sum = smem[0];
-
-    for (int64_t col = threadIdx.x; col < cols; col += blockDim.x) {
-        out[int64_t(row) * cols + col] /= row_sum;
-    }
-}
 
 bool is_rowwise_case(const oprt_tensor_view_t &out, const oprt_tensor_view_t &in, int64_t axis) {
     return in.dtype == OPRT_DTYPE_F32 &&
@@ -133,7 +91,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_execute_softmax_nvidia(
     }
     auto *typed = static_cast<const SoftmaxDescriptor *>(desc);
     constexpr int threads = 256;
-    softmax_rowwise_kernel<<<typed->rows, threads, threads * sizeof(float), oprt::as_cuda_stream(stream)>>>(
+    oprt::softmax::nvidia::softmax_rowwise_kernel<<<typed->rows, threads, threads * sizeof(float), oprt::as_cuda_stream(stream)>>>(
         static_cast<float *>(out), static_cast<const float *>(in), typed->rows, typed->cols);
     OPRT_CUDA_RETURN_IF_ERROR(cudaGetLastError());
     return OPRT_SUCCESS;
@@ -144,4 +102,3 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_softmax_descriptor_nvidia(
     delete desc;
     return OPRT_SUCCESS;
 }
-

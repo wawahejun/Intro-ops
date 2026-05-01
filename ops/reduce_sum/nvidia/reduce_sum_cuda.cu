@@ -3,9 +3,9 @@
 #include "operator_runtime/descriptor.h"
 #include "operator_runtime/tensor_checks.h"
 #include "operator_runtime/cuda_helpers.h"
+#include "ops/reduce_sum/nvidia/kernel.cuh"
 
 #include <cuda_runtime.h>
-#include <float.h>
 
 namespace {
 
@@ -20,27 +20,6 @@ struct ReduceSumDescriptor final : oprt_operator_descriptor {
         return "reduce_sum";
     }
 };
-
-__global__ void reduce_sum_rowwise_kernel(float *out, const float *in, int64_t rows, int64_t cols) {
-    extern __shared__ float smem[];
-    int row = blockIdx.x;
-    float sum = 0.0f;
-    for (int64_t col = threadIdx.x; col < cols; col += blockDim.x) {
-        sum += in[int64_t(row) * cols + col];
-    }
-    smem[threadIdx.x] = sum;
-    __syncthreads();
-
-    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (threadIdx.x < stride) {
-            smem[threadIdx.x] += smem[threadIdx.x + stride];
-        }
-        __syncthreads();
-    }
-    if (threadIdx.x == 0) {
-        out[row] = smem[0];
-    }
-}
 
 bool is_rowwise_case(const oprt_tensor_view_t &out, const oprt_tensor_view_t &in, int64_t axis) {
     return in.dtype == OPRT_DTYPE_F32 &&
@@ -112,7 +91,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_execute_reduce_sum_nvidia(
     }
     auto *typed = static_cast<const ReduceSumDescriptor *>(desc);
     constexpr int threads = 256;
-    reduce_sum_rowwise_kernel<<<typed->rows, threads, threads * sizeof(float), oprt::as_cuda_stream(stream)>>>(
+    oprt::reduce_sum::nvidia::reduce_sum_rowwise_kernel<<<typed->rows, threads, threads * sizeof(float), oprt::as_cuda_stream(stream)>>>(
         static_cast<float *>(out), static_cast<const float *>(in), typed->rows, typed->cols);
     OPRT_CUDA_RETURN_IF_ERROR(cudaGetLastError());
     return OPRT_SUCCESS;
@@ -123,4 +102,3 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_reduce_sum_descriptor_nvidia(
     delete desc;
     return OPRT_SUCCESS;
 }
-

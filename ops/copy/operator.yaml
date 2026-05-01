@@ -10,6 +10,7 @@ backends:
       - ops/copy/nvidia/copy_cuda.cu
     headers:
       - ops/copy/nvidia/copy_cuda.h
+      - ops/copy/nvidia/kernel.cuh
     symbols:
       create: oprt_create_copy_descriptor_nvidia
       workspace: oprt_get_copy_workspace_size_nvidia
@@ -43,4 +44,3 @@ performance_model:
   bound: memory
   bytes: "2 * numel * elem_bytes"
   flops: "0"
-

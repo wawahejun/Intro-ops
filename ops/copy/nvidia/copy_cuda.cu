@@ -4,7 +4,7 @@
 #include "operator_runtime/elementwise.h"
 #include "operator_runtime/tensor_checks.h"
 #include "operator_runtime/cuda_helpers.h"
-#include "ops/common/nvidia/elementwise.cuh"
+#include "ops/copy/nvidia/kernel.cuh"
 
 #include <cuda_fp16.h>
 
@@ -25,8 +25,8 @@ template <typename T>
 oprt_status_t launch_copy(const CopyDescriptor *desc, void *dst, const void *src, oprt_stream_t stream) {
     constexpr int threads = 256;
     int blocks = oprt::blocks_for(desc->elements, threads);
-    oprt::nvidia::unary_contiguous_kernel<T><<<blocks, threads, 0, oprt::as_cuda_stream(stream)>>>(
-        static_cast<T *>(dst), static_cast<const T *>(src), desc->elements, oprt::nvidia::CopyOp{});
+    oprt::copy::nvidia::copy_contiguous_kernel<T><<<blocks, threads, 0, oprt::as_cuda_stream(stream)>>>(
+        static_cast<T *>(dst), static_cast<const T *>(src), desc->elements);
     OPRT_CUDA_RETURN_IF_ERROR(cudaGetLastError());
     return OPRT_SUCCESS;
 }
