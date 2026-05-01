@@ -7,7 +7,6 @@ import tilelang.language as T
 @tilelang.jit(
     pass_configs={
         tilelang.PassConfigKey.TL_DISABLE_WARP_SPECIALIZED: True,
-        tilelang.PassConfigKey.TL_DISABLE_TMA_LOWER: True,
     },
 )
 def softmax_kernel(src, BLOCK_N: int, BLOCK_M: int):
@@ -28,7 +27,7 @@ def softmax_kernel(src, BLOCK_N: int, BLOCK_M: int):
         T.fill(lse, -T.infinity(dtype))
 
         for m_blk in T.Serial(M // BLOCK_M):
-            T.copy(src[pid_n * BLOCK_N, m_blk * BLOCK_M], src_local)
+            T.copy(src[pid_n * BLOCK_N, m_blk * BLOCK_M], src_local, disable_tma=True)
             T.reduce_max(src_local, cur_max, dim=1, clear=True)
 
             for i, j in T.Parallel(BLOCK_N, BLOCK_M):
@@ -42,7 +41,7 @@ def softmax_kernel(src, BLOCK_N: int, BLOCK_M: int):
                 )
 
         for m_blk in T.Serial(M // BLOCK_M):
-            T.copy(src[pid_n * BLOCK_N, m_blk * BLOCK_M], src_local)
+            T.copy(src[pid_n * BLOCK_N, m_blk * BLOCK_M], src_local, disable_tma=True)
             for i, j in T.Parallel(BLOCK_N, BLOCK_M):
                 out_local[i, j] = T.exp2(src_local[i, j] * log2_e - lse[i])
             T.copy(out_local, out[pid_n * BLOCK_N, m_blk * BLOCK_M])
