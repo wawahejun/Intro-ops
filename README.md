@@ -9,8 +9,6 @@ small, but its workflow mirrors production operator libraries:
 4. Expose a Python API with out-of-place, out-variant, and prepared execution.
 5. Validate correctness against PyTorch and benchmark steady-state execution.
 
-The project is rooted directly at `/workspace`; it does not create a nested
-`/workspace/camp` project directory.
 
 ## Operators
 
@@ -20,6 +18,12 @@ The project is rooted directly at `/workspace`; it does not create a nested
 | `vector_add` | runnable | runnable when TileLang is installed | stub |
 | `reduce_sum` | runnable, row-wise fp32 | runnable when TileLang is installed | stub |
 | `softmax` | runnable, row-wise fp32 | runnable when TileLang is installed | stub |
+
+## Setup
+
+```bash
+pip install -r requirements.txt
+```
 
 ## Build
 
@@ -34,6 +38,7 @@ cmake --build . -j$(nproc)
 
 ```bash
 python tools/validate_operator_manifest.py --ops-root ops --tests-root tests
+python tests/run_ops.py --op copy --backend nvidia --mode all
 CAMP_BUILD_DIR=build pytest tests/ -v --backend nvidia
 pytest tests/ -v --backend tilelang
 python tests/bench_all.py --backend nvidia --profile tests/perf_profiles/local_gpu.yaml
@@ -50,3 +55,5 @@ The TileLang backend requires the `tilelang` Python package.
 | generated registry | operation table / backend registry |
 | `tests/cases/<op>.py` | correctness, layout, and API contract coverage |
 | `PerformanceResult` | profiler report row with latency, bytes, flops, bandwidth |
+| eager TileLang kernel | puzzle-stage kernel using `T.empty(...)` return values |
+| lazy TileLang `out_idx` template | TileOPs-style kernel factory and output-position contract |

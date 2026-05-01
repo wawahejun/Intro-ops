@@ -1,0 +1,13 @@
+# Python dependencies for operator_runtime_training
+
+# Runtime and benchmarking (required)
+torch>=2.0
+
+# CMake build-time artifact generation and manifest validation (required)
+pyyaml>=5.1
+
+# TileLang backend (required)
+tilelang
+
+# Testing framework
+pytest>=7.0
