@@ -3,9 +3,10 @@ from __future__ import annotations
 from functools import lru_cache
 from dataclasses import dataclass
 
-import tilelang
 import tilelang.language as T
 import torch
+
+from ops.copy.tilelang.kernel import copy_kernel
 
 
 def _tl_dtype(dtype: torch.dtype):
@@ -15,29 +16,13 @@ def _tl_dtype(dtype: torch.dtype):
         return T.float32
     raise TypeError(f"unsupported TileLang dtype: {dtype}")
 
-
-@tilelang.jit
-def _copy_kernel(src, BLOCK_N: int, dtype):
-    N = T.const("N")
-    src: T.Tensor((N,), dtype)
-    out = T.empty((N,), dtype)
-
-    with T.Kernel(N // BLOCK_N, threads=256) as pid_n:
-        T.copy(
-            src[pid_n * BLOCK_N : (pid_n + 1) * BLOCK_N],
-            out[pid_n * BLOCK_N : (pid_n + 1) * BLOCK_N],
-        )
-
-    return out
-
-
 def _block_n(n: int) -> int:
     return 1024 if n % 1024 == 0 else n
 
 
 @lru_cache(maxsize=32)
 def _compiled_copy(n: int, block_n: int, dtype: torch.dtype):
-    return _copy_kernel.compile(N=n, BLOCK_N=block_n, dtype=_tl_dtype(dtype))
+    return copy_kernel.compile(N=n, BLOCK_N=block_n, dtype=_tl_dtype(dtype))
 
 
 @dataclass

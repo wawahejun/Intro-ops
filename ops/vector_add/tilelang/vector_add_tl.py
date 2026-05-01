@@ -3,9 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 
-import tilelang
 import tilelang.language as T
 import torch
+
+from ops.vector_add.tilelang.kernel import vector_add_kernel
 
 
 def _tl_dtype(dtype: torch.dtype):
@@ -15,29 +16,13 @@ def _tl_dtype(dtype: torch.dtype):
         return T.float32
     raise TypeError(f"unsupported TileLang dtype: {dtype}")
 
-
-@tilelang.jit
-def _vector_add_kernel(a, b, BLOCK_N: int, dtype):
-    N = T.const("N")
-    a: T.Tensor((N,), dtype)
-    b: T.Tensor((N,), dtype)
-    out = T.empty((N,), dtype)
-
-    with T.Kernel(N // BLOCK_N, threads=256) as pid_n:
-        base = pid_n * BLOCK_N
-        for i in T.Parallel(BLOCK_N):
-            out[base + i] = a[base + i] + b[base + i]
-
-    return out
-
-
 def _block_n(n: int) -> int:
     return 1024 if n % 1024 == 0 else n
 
 
 @lru_cache(maxsize=32)
 def _compiled_vector_add(n: int, block_n: int, dtype: torch.dtype):
-    return _vector_add_kernel.compile(N=n, BLOCK_N=block_n, dtype=_tl_dtype(dtype))
+    return vector_add_kernel.compile(N=n, BLOCK_N=block_n, dtype=_tl_dtype(dtype))
 
 
 @dataclass
