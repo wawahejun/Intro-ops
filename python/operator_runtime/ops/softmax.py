@@ -1,0 +1,62 @@
+from __future__ import annotations
+
+import ctypes
+
+import torch
+
+from operator_runtime.backend import Backend, normalize_backend
+from operator_runtime.ctypes_bindings import Descriptor, bind_reduce_like, check_status
+from operator_runtime.prepared import PreparedOp
+from operator_runtime.tensor_view import tensor_view
+
+
+def _check(out: torch.Tensor, src: torch.Tensor, dim: int) -> None:
+    if not out.is_cuda or not src.is_cuda:
+        raise ValueError("softmax expects CUDA tensors")
+    if src.dtype is not torch.float32 or out.dtype is not torch.float32:
+        raise TypeError("softmax v1 supports float32 only")
+    if src.ndim != 2 or out.ndim != 2 or dim != 1:
+        raise ValueError("softmax v1 supports 2D row-wise dim=1")
+    if out.shape != src.shape:
+        raise ValueError("softmax output shape must match input")
+    if not out.is_contiguous() or not src.is_contiguous():
+        raise ValueError("softmax v1 supports contiguous tensors only")
+
+
+def prepare_softmax(
+    out: torch.Tensor,
+    src: torch.Tensor,
+    dim: int = 1,
+    backend: str | Backend = Backend.NVIDIA,
+) -> PreparedOp:
+    backend = normalize_backend(backend)
+    _check(out, src, dim)
+    if backend is Backend.TILELANG:
+        from ops.softmax.tilelang.softmax_tl import prepare_softmax_tl
+
+        return prepare_softmax_tl(out, src, dim=dim)
+    if backend is not Backend.NVIDIA:
+        raise NotImplementedError(f"backend {backend.value} is not runnable")
+
+    funcs = bind_reduce_like("softmax")
+    desc = Descriptor()
+    out_view = tensor_view(out)
+    src_view = tensor_view(src)
+    check_status(funcs.create(ctypes.byref(desc), ctypes.byref(out_view), ctypes.byref(src_view), ctypes.c_int64(dim)))
+    workspace_size = ctypes.c_size_t()
+    check_status(funcs.workspace(desc, ctypes.byref(workspace_size)))
+    workspace = torch.empty(workspace_size.value, dtype=torch.uint8, device=out.device) if workspace_size.value else None
+    args = (ctypes.c_void_p(out.data_ptr()), ctypes.c_void_p(src.data_ptr()))
+    return PreparedOp(funcs, desc, workspace, args, out)
+
+
+def softmax_(out: torch.Tensor, src: torch.Tensor, dim: int = 1, backend: str | Backend = Backend.NVIDIA) -> torch.Tensor:
+    with prepare_softmax(out, src, dim, backend) as prepared:
+        prepared.run()
+    return out
+
+
+def softmax(src: torch.Tensor, dim: int = 1, backend: str | Backend = Backend.NVIDIA) -> torch.Tensor:
+    out = torch.empty_like(src)
+    return softmax_(out, src, dim, backend)
+
