@@ -3,9 +3,9 @@
 This repository is a training-oriented GPU operator runtime. It is intentionally
 small, but its workflow mirrors production operator libraries:
 
-1. Define the operator contract in `ops/<op>/operator.yaml`.
-2. Generate build and runtime registries from the manifest.
-3. Implement a backend-specific descriptor lifecycle.
+1. Create a directory under `ops/<op>/` with backend implementations.
+2. The build system auto-discovers sources by directory convention.
+3. Implement a backend-specific descriptor lifecycle (create, workspace, execute, destroy).
 4. Expose a Python API with out-of-place, out-variant, and prepared execution.
 5. Validate correctness against PyTorch and benchmark steady-state execution.
 
@@ -37,22 +37,33 @@ cmake --build . -j$(nproc)
 ## Validate
 
 ```bash
-python tools/validate_operator_manifest.py --ops-root ops --tests-root tests
 python tests/run_ops.py --op copy --backend nvidia --mode all
 CAMP_BUILD_DIR=build pytest tests/ -v --backend nvidia
 pytest tests/ -v --backend tilelang
-python tests/bench_all.py --backend nvidia --profile tests/perf_profiles/local_gpu.yaml
+python tests/run_ops.py --op all --backend nvidia --mode bench
 ```
 
-The TileLang backend requires the `tilelang` Python package. 
+The TileLang backend requires the `tilelang` Python package.
+
+## Adding a New Operator
+
+1. Create `ops/<name>/nvidia/<name>_cuda.h` with the C API (4 functions: create, workspace, execute, destroy).
+2. Create `ops/<name>/nvidia/<name>_cuda.cu` with the CUDA implementation.
+3. Create `python/operator_runtime/ops/<name>.py` using `ctypes_bindings.bind_*` functions.
+4. Create `tests/cases/<name>.py` with `correctness_cases()`, `api_error_cases()`, and `benchmark_cases()`.
+5. Create `tests/ops/test_<name>.py` and `tests/bench/<name>.py`.
+6. Re-run `cmake ..` in the build directory (the glob will pick up the new `.cu` file).
+7. Register the public API in `python/operator_runtime/__init__.py`.
+
+No YAML, no code generation, no registration step.
 
 ## Production Mapping
 
 | Training concept | Production equivalent |
 | --- | --- |
-| `operator.yaml` | reviewed operator spec / manifest |
+| directory convention `ops/<op>/nvidia/*.cu` | build system auto-discovery / operator registry |
+| C header `ops/<op>/nvidia/<op>_cuda.h` | reviewed operator API contract |
 | descriptor lifecycle | create, workspace, execute, destroy |
-| generated registry | operation table / backend registry |
 | `tests/cases/<op>.py` | correctness, layout, and API contract coverage |
 | `PerformanceResult` | profiler report row with latency, bytes, flops, bandwidth |
 | eager TileLang kernel | puzzle-stage kernel using `T.empty(...)` return values |
