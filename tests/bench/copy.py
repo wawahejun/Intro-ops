@@ -27,7 +27,9 @@ def bench_copy(backend: str) -> list[PerformanceResult]:
     for case in copy_cases.benchmark_cases():
         src = torch.randn(case["shape"], dtype=case["dtype"], device="cuda")
         out = torch.empty_like(src)
-        runtime = cuda_time_ms(lambda: copy(src, backend=backend))
+        from operator_runtime import prepare_copy
+        with prepare_copy(out, src, backend=backend) as prepared:
+            runtime = cuda_time_ms(prepared.run)
         torch_ms = cuda_time_ms(lambda: out.copy_(src))
         bytes_, flops = _estimate_copy(src)
         rows.append(

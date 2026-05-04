@@ -27,7 +27,10 @@ def bench_reduce_sum(backend: str) -> list[PerformanceResult]:
     rows: list[PerformanceResult] = []
     for case in reduce_sum_cases.benchmark_cases():
         src = torch.randn(case["shape"], dtype=case["dtype"], device="cuda")
-        runtime = cuda_time_ms(lambda: reduce_sum(src, dim=1, backend=backend))
+        from operator_runtime import prepare_reduce_sum
+        out = torch.empty(src.shape[0], dtype=src.dtype, device="cuda")
+        with prepare_reduce_sum(out, src, dim=1, backend=backend) as prepared:
+            runtime = cuda_time_ms(prepared.run)
         torch_ms = cuda_time_ms(lambda: torch.sum(src, dim=1))
         bytes_, flops = _estimate_reduce_sum(src)
         rows.append(

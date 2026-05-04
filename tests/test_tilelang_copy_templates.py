@@ -16,8 +16,8 @@ pytestmark = pytest.mark.skipif(
 @pytest.mark.parametrize(
     ("copy_fn_name", "copy_out_fn_name", "module_name"),
     [
-        ("copy_eager", "copy_eager_", "ops.common.tilelang.eager_copy"),
-        ("copy_lazy_out_idx", "copy_lazy_out_idx_", "ops.common.tilelang.lazy_out_idx_copy"),
+        ("copy_eager", "copy_eager_", "operator_runtime_backends.tilelang.copy_templates"),
+        ("copy_lazy_out_idx", "copy_lazy_out_idx_", "operator_runtime_backends.tilelang.copy_templates"),
     ],
 )
 def test_tilelang_copy_templates_match_torch(copy_fn_name, copy_out_fn_name, module_name) -> None:
@@ -39,8 +39,8 @@ def test_tilelang_copy_templates_match_torch(copy_fn_name, copy_out_fn_name, mod
 @pytest.mark.parametrize(
     ("copy_out_fn_name", "module_name", "message"),
     [
-        ("copy_eager_", "ops.common.tilelang.eager_copy", "matching shapes"),
-        ("copy_lazy_out_idx_", "ops.common.tilelang.lazy_out_idx_copy", "matching shapes"),
+        ("copy_eager_", "operator_runtime_backends.tilelang.copy_templates", "matching shapes"),
+        ("copy_lazy_out_idx_", "operator_runtime_backends.tilelang.copy_templates", "matching shapes"),
     ],
 )
 def test_tilelang_copy_templates_reject_mismatched_out(

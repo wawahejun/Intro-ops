@@ -22,5 +22,12 @@ def api_error_cases():
 
 def benchmark_cases():
     return [
-        {"name": "contiguous_1m", "shape": (1 << 20,), "dtype": torch.float16},
+        {"name": "contiguous_1m_fp16", "shape": (1 << 20,), "dtype": torch.float16},
+        {"name": "contiguous_4m_fp16", "shape": (4 << 20,), "dtype": torch.float16},
+        {"name": "contiguous_16m_fp16", "shape": (16 << 20,), "dtype": torch.float16},
+        {"name": "contiguous_64m_fp16", "shape": (64 << 20,), "dtype": torch.float16},
+        {"name": "contiguous_1m_fp32", "shape": (1 << 20,), "dtype": torch.float32},
+        {"name": "contiguous_4m_fp32", "shape": (4 << 20,), "dtype": torch.float32},
+        {"name": "contiguous_16m_fp32", "shape": (16 << 20,), "dtype": torch.float32},
+        {"name": "contiguous_64m_fp32", "shape": (64 << 20,), "dtype": torch.float32},
     ]

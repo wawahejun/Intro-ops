@@ -27,8 +27,11 @@ def bench_vector_add(backend: str) -> list[PerformanceResult]:
     for case in vector_add_cases.benchmark_cases():
         a = torch.randn(case["shape"], dtype=case["dtype"], device="cuda")
         b = torch.randn_like(a)
-        runtime = cuda_time_ms(lambda: vector_add(a, b, backend=backend))
-        torch_ms = cuda_time_ms(lambda: torch.add(a, b))
+        out = torch.empty_like(a)
+        from operator_runtime import prepare_vector_add
+        with prepare_vector_add(out, a, b, backend=backend) as prepared:
+            runtime = cuda_time_ms(prepared.run)
+        torch_ms = cuda_time_ms(lambda: torch.add(a, b, out=out))
         bytes_, flops = _estimate_vector_add(a)
         rows.append(
             PerformanceResult(

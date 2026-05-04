@@ -26,8 +26,11 @@ def bench_softmax(backend: str) -> list[PerformanceResult]:
     rows: list[PerformanceResult] = []
     for case in softmax_cases.benchmark_cases():
         src = torch.randn(case["shape"], dtype=case["dtype"], device="cuda")
-        runtime = cuda_time_ms(lambda: softmax(src, dim=1, backend=backend))
-        torch_ms = cuda_time_ms(lambda: torch.softmax(src, dim=1))
+        out = torch.empty_like(src)
+        from operator_runtime import prepare_softmax
+        with prepare_softmax(out, src, dim=1, backend=backend) as prepared:
+            runtime = cuda_time_ms(prepared.run)
+        torch_ms = cuda_time_ms(lambda: torch.softmax(src, dim=1, out=out))
         bytes_, flops = _estimate_softmax(src)
         rows.append(
             PerformanceResult(
