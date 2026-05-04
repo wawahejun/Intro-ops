@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
 
 import torch
 
-from operator_runtime.profiler import PerformanceResult
+from operator_runtime.testing import PerformanceResult
 from tests.bench.copy import bench_copy
 from tests.bench.reduce_sum import bench_reduce_sum
 from tests.bench.softmax import bench_softmax

@@ -31,4 +31,3 @@ class PerformanceResult:
         if self.torch_ms is None or self.runtime_ms <= 0:
             return None
         return self.torch_ms / self.runtime_ms
-

@@ -11,4 +11,3 @@ def require_cuda() -> None:
 
 def assert_close(actual: torch.Tensor, expected: torch.Tensor, *, atol: float, rtol: float) -> None:
     torch.testing.assert_close(actual, expected, atol=atol, rtol=rtol)
-

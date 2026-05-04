@@ -17,4 +17,3 @@ def cuda_time_ms(fn: Callable[[], None], *, warmup: int = 10, iterations: int = 
     end.record()
     torch.cuda.synchronize()
     return start.elapsed_time(end) / iterations
-

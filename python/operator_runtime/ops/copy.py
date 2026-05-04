@@ -5,9 +5,7 @@ import ctypes
 import torch
 
 from operator_runtime.backend import Backend, normalize_backend
-from operator_runtime.ctypes_bindings import Descriptor, bind_unary, check_status
-from operator_runtime.prepared import PreparedOp
-from operator_runtime.tensor_view import tensor_view
+from operator_runtime._runtime import Descriptor, bind_unary, check_status, PreparedOp, tensor_view
 
 
 def _check(out: torch.Tensor, src: torch.Tensor) -> None:
