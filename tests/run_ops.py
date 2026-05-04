@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import torch
+
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON_DIR = ROOT / "python"
 if str(PYTHON_DIR) not in sys.path:
@@ -115,6 +117,10 @@ def main() -> int:
     parser.add_argument("--backend", choices=["nvidia", "tilelang"], default="nvidia")
     parser.add_argument("--mode", choices=["test", "bench", "all"], default="all")
     args = parser.parse_args()
+
+    if args.mode in ("bench", "all") and not torch.cuda.is_available():
+        print("CUDA is required for benchmark", file=sys.stderr)
+        return 2
 
     selected_ops = ops if args.op == "all" else (args.op,)
     rows: list[list[str]] = []
