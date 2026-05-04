@@ -8,6 +8,21 @@
 4. 提供 Python API，支持 out-of-place、out-variant 和 prepared 执行。
 5. 通过 PyTorch 做正确性验证，并做稳定态性能测试。
 
+## Python 目录结构
+
+```text
+python/
+  operator_runtime/
+    backend.py
+    ops/
+    _internal/
+  operator_runtime_testing/
+```
+
+- `operator_runtime.ops` 放公开算子绑定。
+- `operator_runtime._internal` 放私有 FFI 和运行时细节。
+- `operator_runtime_testing` 放断言、benchmark 等仅测试使用的工具。
+
 ## 算子
 
 | 算子 | NVIDIA C++ | TileLang | MetaX |
@@ -42,6 +57,18 @@ python tests/run_ops.py --op all --backend nvidia --mode bench
 ```
 
 TileLang 后端需要安装 `tilelang` Python 包。
+
+## 如何新增算子
+
+1. 创建 `ops/<name>/nvidia/<name>_cuda.h`，提供 4 个 C API：create、workspace、execute、destroy。
+2. 创建 `ops/<name>/nvidia/<name>_cuda.cu`，实现 CUDA 逻辑。
+3. 创建 `python/operator_runtime/ops/<name>.py`，使用 `operator_runtime._internal.bind_*` 绑定。
+4. 创建 `tests/cases/<name>.py`，提供 `correctness_cases()`、`api_error_cases()` 和 `benchmark_cases()`。
+5. 创建 `tests/ops/test_<name>.py` 和 `tests/bench/<name>.py`。
+6. 在构建目录里重新执行 `cmake ..`，因为 glob 会自动拾取新的 `.cu` 文件。
+7. 在 `python/operator_runtime/__init__.py` 中导出公共 API。
+
+这里没有 YAML、没有代码生成、也没有额外的注册步骤。
 
 ## 生产映射
 

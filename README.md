@@ -9,6 +9,20 @@ small, but its workflow mirrors production operator libraries:
 4. Expose a Python API with out-of-place, out-variant, and prepared execution.
 5. Validate correctness against PyTorch and benchmark steady-state execution.
 
+## Python Layout
+
+```text
+python/
+  operator_runtime/
+    backend.py
+    ops/
+    _internal/
+  operator_runtime_testing/
+```
+
+- `operator_runtime.ops` contains public operator bindings.
+- `operator_runtime._internal` contains private FFI/runtime plumbing.
+- `operator_runtime_testing` contains test-only helpers such as assertions and benchmark utilities.
 
 ## Operators
 
@@ -49,7 +63,7 @@ The TileLang backend requires the `tilelang` Python package.
 
 1. Create `ops/<name>/nvidia/<name>_cuda.h` with the C API (4 functions: create, workspace, execute, destroy).
 2. Create `ops/<name>/nvidia/<name>_cuda.cu` with the CUDA implementation.
-3. Create `python/operator_runtime/ops/<name>.py` using `ctypes_bindings.bind_*` functions.
+3. Create `python/operator_runtime/ops/<name>.py` using `operator_runtime._internal.bind_*` functions.
 4. Create `tests/cases/<name>.py` with `correctness_cases()`, `api_error_cases()`, and `benchmark_cases()`.
 5. Create `tests/ops/test_<name>.py` and `tests/bench/<name>.py`.
 6. Re-run `cmake ..` in the build directory (the glob will pick up the new `.cu` file).
