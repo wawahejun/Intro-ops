@@ -3,9 +3,6 @@
 # Runtime and benchmarking (required)
 torch>=2.0
 
-# CMake build-time artifact generation and manifest validation (required)
-pyyaml>=5.1
-
 # TileLang backend (required)
 tilelang
 
