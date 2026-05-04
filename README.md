@@ -59,18 +59,6 @@ python tests/run_ops.py --op all --backend nvidia --mode bench
 
 The TileLang backend requires the `tilelang` Python package.
 
-## Adding a New Operator
-
-1. Create `ops/<name>/nvidia/<name>_cuda.h` with the C API (4 functions: create, workspace, execute, destroy).
-2. Create `ops/<name>/nvidia/<name>_cuda.cu` with the CUDA implementation.
-3. Create `python/operator_runtime/ops/<name>.py` using `operator_runtime._internal.bind_*` functions.
-4. Create `tests/cases/<name>.py` with `correctness_cases()`, `api_error_cases()`, and `benchmark_cases()`.
-5. Create `tests/ops/test_<name>.py` and `tests/bench/<name>.py`.
-6. Re-run `cmake ..` in the build directory (the glob will pick up the new `.cu` file).
-7. Register the public API in `python/operator_runtime/__init__.py`.
-
-No YAML, no code generation, no registration step.
-
 ## Production Mapping
 
 | Training concept | Production equivalent |
