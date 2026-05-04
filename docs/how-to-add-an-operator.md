@@ -32,7 +32,7 @@
 - `ops/<算子名>/nvidia/`
 - `python/operator_runtime/ops/<算子名>.py`
 - `tests/cases/<算子名>.py`
-- `tests/ops/test_<算子名>.py`
+- `tests/op_tests/test_<算子名>.py`
 - `tests/bench/<算子名>.py`
 
 如果后续要支持 TileLang 或 MetaX，再分别补 `tilelang/` 或 `metax/`。
@@ -112,7 +112,7 @@ Python 入口放在 `python/operator_runtime/ops/<算子名>.py`。
 
 ## Step 7：补正确性测试
 
-`tests/ops/test_<算子名>.py` 主要负责三件事：
+`tests/op_tests/test_<算子名>.py` 主要负责三件事：
 
 1. 正确性对比
 2. API contract 检查
@@ -191,7 +191,7 @@ API contract 测试主要覆盖 shape 不匹配、dtype 不匹配、非 contiguo
 2. `python/operator_runtime/ops/<算子名>.py` 已补齐。
 3. 两个 `__init__.py` 已导出新接口。
 4. `tests/cases/<算子名>.py` 已补数据。
-5. `tests/ops/test_<算子名>.py` 已补测试。
+5. `tests/op_tests/test_<算子名>.py` 已补测试。
 6. `tests/bench/<算子名>.py` 已补 benchmark。
 7. 新增 `.cu` 后已经重新执行过 `cmake ..`。
 8. 至少完成一次单算子验证。

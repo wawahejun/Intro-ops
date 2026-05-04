@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
 
 
 def _discover_ops() -> tuple[str, ...]:
-    ops_dir = ROOT / "tests" / "ops"
+    ops_dir = ROOT / "tests" / "op_tests"
     bench_dir = ROOT / "tests" / "bench"
     names: set[str] = set()
 
@@ -58,8 +58,6 @@ def _format_bench_table(rows) -> str:
         "runtime_ms",
         "torch_ms",
         "speedup",
-        "GB/s",
-        "GFLOP/s",
     ]
     body = []
     for row in rows:
@@ -74,8 +72,6 @@ def _format_bench_table(rows) -> str:
                 f"{row.runtime_ms:.4f}",
                 torch_ms,
                 speedup,
-                f"{row.gbytes_per_sec:.2f}",
-                f"{row.gflops_per_sec:.2f}",
             ]
         )
 
@@ -129,7 +125,7 @@ def main() -> int:
 
     for op in selected_ops:
         if args.mode in ("test", "all"):
-            ok, detail = _run_pytest(f"tests/ops/test_{op}.py", args.backend)
+            ok, detail = _run_pytest(f"tests/op_tests/test_{op}.py", args.backend)
             rows.append(["test", op, args.backend, "ok" if ok else "fail", detail])
             failed = failed or not ok
         if args.mode in ("bench", "all"):
