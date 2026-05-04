@@ -15,15 +15,15 @@ def reduce_sum_kernel(src, BLOCK_N: int, BLOCK_M: int):
     src: T.Tensor((N, M), dtype)
     out = T.empty((N,), dtype)
 
-    with T.Kernel(N // BLOCK_N, threads=256) as pid_n:
-        src_local = T.alloc_fragment((BLOCK_N, BLOCK_M), dtype)
-        out_local = T.alloc_fragment((BLOCK_N,), dtype)
-        T.clear(out_local)
-
-        for m_blk in T.Serial(M // BLOCK_M):
-            T.copy(src[pid_n * BLOCK_N, m_blk * BLOCK_M], src_local, disable_tma=True)
-            T.reduce_sum(src_local, out_local, dim=1, clear=False)
-
-        T.copy(out_local, out[pid_n * BLOCK_N])
+    # TODO: implement a tiled row-wise reduce_sum kernel.
+    #
+    # Suggested steps:
+    # 1. Launch one TileLang kernel over row tiles.
+    # 2. Allocate fragments for the input tile and running output tile.
+    # 3. Clear the running output fragment before accumulation.
+    # 4. Iterate over column tiles with T.Serial(M // BLOCK_M).
+    # 5. T.copy each input tile into the fragment.
+    # 6. Call T.reduce_sum on the fragment and accumulate into the output fragment.
+    # 7. Copy the final output fragment back to global memory.
 
     return out

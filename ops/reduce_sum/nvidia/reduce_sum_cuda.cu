@@ -90,8 +90,9 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_execute_reduce_sum_nvidia(
         return OPRT_ERR_INSUFFICIENT_WORKSPACE;
     }
     auto *typed = static_cast<const ReduceSumDescriptor *>(desc);
+    cudaStream_t s = oprt::as_cuda_stream(stream);
     constexpr int threads = 256;
-    oprt::reduce_sum::nvidia::reduce_sum_rowwise_kernel<<<typed->rows, threads, threads * sizeof(float), oprt::as_cuda_stream(stream)>>>(
+    oprt::reduce_sum::nvidia::reduce_sum_rowwise_kernel<<<typed->rows, threads, threads * sizeof(float), s>>>(
         static_cast<float *>(out), static_cast<const float *>(in), typed->rows, typed->cols);
     OPRT_CUDA_RETURN_IF_ERROR(cudaGetLastError());
     return OPRT_SUCCESS;

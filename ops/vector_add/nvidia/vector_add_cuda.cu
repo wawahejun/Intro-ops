@@ -25,7 +25,8 @@ template <typename T>
 oprt_status_t launch_vector_add(const VectorAddDescriptor *desc, void *out, const void *a, const void *b, oprt_stream_t stream) {
     constexpr int threads = 256;
     int blocks = oprt::blocks_for(desc->elements, threads);
-    oprt::vector_add::nvidia::vector_add_contiguous_kernel<T><<<blocks, threads, 0, oprt::as_cuda_stream(stream)>>>(
+    cudaStream_t s = oprt::as_cuda_stream(stream);
+    oprt::vector_add::nvidia::vector_add_contiguous_kernel<T><<<blocks, threads, 0, s>>>(
         static_cast<T *>(out), static_cast<const T *>(a), static_cast<const T *>(b), desc->elements);
     OPRT_CUDA_RETURN_IF_ERROR(cudaGetLastError());
     return OPRT_SUCCESS;

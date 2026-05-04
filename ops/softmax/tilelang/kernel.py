@@ -16,34 +16,21 @@ def softmax_kernel(src, BLOCK_N: int, BLOCK_M: int):
     src: T.Tensor((N, M), dtype)
     out = T.empty((N, M), dtype)
 
-    with T.Kernel(N // BLOCK_N, threads=256) as pid_n:
-        src_local = T.alloc_fragment((BLOCK_N, BLOCK_M), dtype)
-        out_local = T.alloc_fragment((BLOCK_N, BLOCK_M), dtype)
-        cur_exp = T.alloc_fragment((BLOCK_N, BLOCK_M), dtype)
-        cur_max = T.alloc_fragment((BLOCK_N,), dtype)
-        cur_sum = T.alloc_fragment((BLOCK_N,), dtype)
-        lse = T.alloc_fragment((BLOCK_N,), dtype)
-
-        T.fill(lse, -T.infinity(dtype))
-
-        for m_blk in T.Serial(M // BLOCK_M):
-            T.copy(src[pid_n * BLOCK_N, m_blk * BLOCK_M], src_local, disable_tma=True)
-            T.reduce_max(src_local, cur_max, dim=1, clear=True)
-
-            for i, j in T.Parallel(BLOCK_N, BLOCK_M):
-                cur_exp[i, j] = T.exp2(src_local[i, j] * log2_e - cur_max[i] * log2_e)
-
-            T.reduce_sum(cur_exp, cur_sum, dim=1, clear=True)
-
-            for i in T.Parallel(BLOCK_N):
-                lse[i] = cur_max[i] * log2_e + T.log2(
-                    T.exp2(lse[i] - cur_max[i] * log2_e) + cur_sum[i]
-                )
-
-        for m_blk in T.Serial(M // BLOCK_M):
-            T.copy(src[pid_n * BLOCK_N, m_blk * BLOCK_M], src_local, disable_tma=True)
-            for i, j in T.Parallel(BLOCK_N, BLOCK_M):
-                out_local[i, j] = T.exp2(src_local[i, j] * log2_e - lse[i])
-            T.copy(out_local, out[pid_n * BLOCK_N, m_blk * BLOCK_M])
+    # TODO: implement a tiled row-wise softmax kernel.
+    #
+    # Suggested steps:
+    # 1. Launch one TileLang kernel over row tiles.
+    # 2. Allocate fragments for src, out, temporary exp values, row max, row sum, and lse.
+    # 3. Initialize the running log-sum-exp state.
+    # 4. In a first T.Serial loop over column tiles:
+    #    - copy the input tile into a fragment
+    #    - reduce to get the tile max
+    #    - compute exp2-based temporary values
+    #    - reduce to get the tile sum
+    #    - update the running lse
+    # 5. In a second T.Serial loop over column tiles:
+    #    - copy the input tile again
+    #    - normalize with the final lse
+    #    - copy the result tile to global memory
 
     return out

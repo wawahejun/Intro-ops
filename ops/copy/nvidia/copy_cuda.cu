@@ -14,7 +14,6 @@ struct CopyDescriptor final : oprt_operator_descriptor {
     oprt_tensor_view_t dst_view;
     oprt_tensor_view_t src_view;
     int64_t elements = 0;
-    bool fast_path = false;
 
     const char *op_name() const override {
         return "copy";
@@ -25,7 +24,8 @@ template <typename T>
 oprt_status_t launch_copy(const CopyDescriptor *desc, void *dst, const void *src, oprt_stream_t stream) {
     constexpr int threads = 256;
     int blocks = oprt::blocks_for(desc->elements, threads);
-    oprt::copy::nvidia::copy_contiguous_kernel<T><<<blocks, threads, 0, oprt::as_cuda_stream(stream)>>>(
+    cudaStream_t s = oprt::as_cuda_stream(stream);
+    oprt::copy::nvidia::copy_contiguous_kernel<T><<<blocks, threads, 0, s>>>(
         static_cast<T *>(dst), static_cast<const T *>(src), desc->elements);
     OPRT_CUDA_RETURN_IF_ERROR(cudaGetLastError());
     return OPRT_SUCCESS;
@@ -65,7 +65,6 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_create_copy_descriptor_nvidia(
     typed->dst_view = *dst;
     typed->src_view = *src;
     typed->elements = oprt::numel(*dst);
-    typed->fast_path = true;
     typed->workspace_size = 0;
     *desc = typed;
     return OPRT_SUCCESS;

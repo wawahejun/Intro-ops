@@ -10,10 +10,10 @@ def copy_kernel(src, BLOCK_N: int, dtype):
     src: T.Tensor((N,), dtype)
     out = T.empty((N,), dtype)
 
-    with T.Kernel(N // BLOCK_N, threads=256) as pid_n:
-        T.copy(
-            src[pid_n * BLOCK_N : (pid_n + 1) * BLOCK_N],
-            out[pid_n * BLOCK_N : (pid_n + 1) * BLOCK_N],
-        )
+    # TODO: implement a tile-wise copy kernel.
+    #
+    # Suggested steps:
+    # 1. Launch one TileLang kernel over the N // BLOCK_N tiles.
+    # 2. Use T.copy to move one tile from src to out.
 
     return out

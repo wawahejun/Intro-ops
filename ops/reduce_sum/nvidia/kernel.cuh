@@ -6,24 +6,14 @@
 namespace oprt::reduce_sum::nvidia {
 
 __global__ void reduce_sum_rowwise_kernel(float *out, const float *in, int64_t rows, int64_t cols) {
-    extern __shared__ float smem[];
-    int row = blockIdx.x;
-    float sum = 0.0f;
-    for (int64_t col = threadIdx.x; col < cols; col += blockDim.x) {
-        sum += in[int64_t(row) * cols + col];
-    }
-    smem[threadIdx.x] = sum;
-    __syncthreads();
-
-    for (int stride = blockDim.x / 2; stride > 0; stride >>= 1) {
-        if (threadIdx.x < stride) {
-            smem[threadIdx.x] += smem[threadIdx.x + stride];
-        }
-        __syncthreads();
-    }
-    if (threadIdx.x == 0) {
-        out[row] = smem[0];
-    }
+    // TODO: implement a row-wise reduce_sum kernel with shared memory.
+    //
+    // Suggested steps:
+    // 1. Use one block per row.
+    // 2. Let each thread accumulate a partial sum over the row.
+    // 3. Store the partial sums in shared memory.
+    // 4. Reduce shared memory with a tree reduction.
+    // 5. Let thread 0 write the final row sum to out[row].
 }
 
 } // namespace oprt::reduce_sum::nvidia
