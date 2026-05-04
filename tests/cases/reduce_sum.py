@@ -24,8 +24,10 @@ def api_error_cases():
 
 def benchmark_cases():
     return [
-        {"name": "rowwise_128x1024", "shape": (128, 1024), "dtype": torch.float32},
-        {"name": "rowwise_1024x1024", "shape": (1024, 1024), "dtype": torch.float32},
-        {"name": "rowwise_1024x4096", "shape": (1024, 4096), "dtype": torch.float32},
-        {"name": "rowwise_4096x1024", "shape": (4096, 1024), "dtype": torch.float32},
+        {"name": "rowwise_144x1280", "shape": (144, 1280), "dtype": torch.float32},
+        {"name": "rowwise_1008x1280", "shape": (1008, 1280), "dtype": torch.float32},
+        {"name": "rowwise_1008x2304", "shape": (1008, 2304), "dtype": torch.float32},
+        {"name": "rowwise_2032x2304", "shape": (2032, 2304), "dtype": torch.float32},
+        {"name": "rowwise_784x3840", "shape": (784, 3840), "dtype": torch.float32},
+        {"name": "rowwise_4080x1536", "shape": (4080, 1536), "dtype": torch.float32},
     ]

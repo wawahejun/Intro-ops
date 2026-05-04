@@ -12,15 +12,8 @@ if str(ROOT) not in sys.path:
 
 import torch
 
-from operator_runtime import reduce_sum
 from operator_runtime_testing import cuda_time_ms, PerformanceResult
 from tests.cases import reduce_sum as reduce_sum_cases
-
-
-def _estimate_reduce_sum(tensor: torch.Tensor) -> tuple[int, int]:
-    rows = tensor.shape[0]
-    elem_bytes = tensor.element_size()
-    return (tensor.numel() + rows) * elem_bytes, tensor.numel()
 
 
 def bench_reduce_sum(backend: str) -> list[PerformanceResult]:
@@ -30,17 +23,14 @@ def bench_reduce_sum(backend: str) -> list[PerformanceResult]:
         from operator_runtime import prepare_reduce_sum
         out = torch.empty(src.shape[0], dtype=src.dtype, device="cuda")
         with prepare_reduce_sum(out, src, dim=1, backend=backend) as prepared:
-            runtime = cuda_time_ms(prepared.run)
-        torch_ms = cuda_time_ms(lambda: torch.sum(src, dim=1))
-        bytes_, flops = _estimate_reduce_sum(src)
+            runtime = cuda_time_ms(prepared.run_inputs, args=(src,))
+        torch_ms = cuda_time_ms(lambda src: torch.sum(src, dim=1, out=out), args=(src,))
         rows.append(
             PerformanceResult(
                 "reduce_sum",
                 backend,
                 str(tuple(src.shape)),
                 str(src.dtype),
-                bytes_,
-                flops,
                 runtime,
                 torch_ms,
             )

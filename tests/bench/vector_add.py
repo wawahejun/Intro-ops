@@ -12,14 +12,8 @@ if str(ROOT) not in sys.path:
 
 import torch
 
-from operator_runtime import vector_add
 from operator_runtime_testing import cuda_time_ms, PerformanceResult
 from tests.cases import vector_add as vector_add_cases
-
-
-def _estimate_vector_add(tensor: torch.Tensor) -> tuple[int, int]:
-    elem_bytes = tensor.element_size()
-    return 3 * tensor.numel() * elem_bytes, tensor.numel()
 
 
 def bench_vector_add(backend: str) -> list[PerformanceResult]:
@@ -30,17 +24,14 @@ def bench_vector_add(backend: str) -> list[PerformanceResult]:
         out = torch.empty_like(a)
         from operator_runtime import prepare_vector_add
         with prepare_vector_add(out, a, b, backend=backend) as prepared:
-            runtime = cuda_time_ms(prepared.run)
-        torch_ms = cuda_time_ms(lambda: torch.add(a, b, out=out))
-        bytes_, flops = _estimate_vector_add(a)
+            runtime = cuda_time_ms(prepared.run_inputs, args=(a, b))
+        torch_ms = cuda_time_ms(lambda a, b: torch.add(a, b, out=out), args=(a, b))
         rows.append(
             PerformanceResult(
                 "vector_add",
                 backend,
                 str(tuple(a.shape)),
                 str(a.dtype),
-                bytes_,
-                flops,
                 runtime,
                 torch_ms,
             )

@@ -12,14 +12,8 @@ if str(ROOT) not in sys.path:
 
 import torch
 
-from operator_runtime import softmax
 from operator_runtime_testing import cuda_time_ms, PerformanceResult
 from tests.cases import softmax as softmax_cases
-
-
-def _estimate_softmax(tensor: torch.Tensor) -> tuple[int, int]:
-    elem_bytes = tensor.element_size()
-    return 5 * tensor.numel() * elem_bytes, 4 * tensor.numel()
 
 
 def bench_softmax(backend: str) -> list[PerformanceResult]:
@@ -29,17 +23,14 @@ def bench_softmax(backend: str) -> list[PerformanceResult]:
         out = torch.empty_like(src)
         from operator_runtime import prepare_softmax
         with prepare_softmax(out, src, dim=1, backend=backend) as prepared:
-            runtime = cuda_time_ms(prepared.run)
-        torch_ms = cuda_time_ms(lambda: torch.softmax(src, dim=1, out=out))
-        bytes_, flops = _estimate_softmax(src)
+            runtime = cuda_time_ms(prepared.run_inputs, args=(src,))
+        torch_ms = cuda_time_ms(lambda src: torch.softmax(src, dim=1, out=out), args=(src,))
         rows.append(
             PerformanceResult(
                 "softmax",
                 backend,
                 str(tuple(src.shape)),
                 str(src.dtype),
-                bytes_,
-                flops,
                 runtime,
                 torch_ms,
             )

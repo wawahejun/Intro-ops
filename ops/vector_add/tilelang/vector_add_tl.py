@@ -32,8 +32,17 @@ class TileLangVectorAddPrepared:
     b: torch.Tensor
     kernel: object
 
+    def run_inputs(self, *inputs: torch.Tensor) -> torch.Tensor:
+        if len(inputs) not in (0, 2):
+            raise ValueError(f"expected 0 or 2 input tensors, got {len(inputs)}")
+        a, b = (self.a, self.b) if not inputs else inputs
+        return self.kernel(a, b)
+
+    def run_kernel(self) -> torch.Tensor:
+        return self.run_inputs()
+
     def run(self) -> None:
-        self.out.copy_(self.kernel(self.a, self.b))
+        self.out.copy_(self.run_inputs())
 
     def destroy(self) -> None:
         pass

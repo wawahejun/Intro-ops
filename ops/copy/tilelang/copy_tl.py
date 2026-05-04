@@ -31,8 +31,17 @@ class TileLangCopyPrepared:
     src: torch.Tensor
     kernel: object
 
+    def run_inputs(self, *inputs: torch.Tensor) -> torch.Tensor:
+        src = self.src if not inputs else inputs[0]
+        if len(inputs) not in (0, 1):
+            raise ValueError(f"expected 0 or 1 input tensors, got {len(inputs)}")
+        return self.kernel(src)
+
+    def run_kernel(self) -> torch.Tensor:
+        return self.run_inputs()
+
     def run(self) -> None:
-        self.out.copy_(self.kernel(self.src))
+        self.out.copy_(self.run_inputs())
 
     def destroy(self) -> None:
         pass

@@ -12,14 +12,8 @@ if str(ROOT) not in sys.path:
 
 import torch
 
-from operator_runtime import copy
 from operator_runtime_testing import cuda_time_ms, PerformanceResult
 from tests.cases import copy as copy_cases
-
-
-def _estimate_copy(tensor: torch.Tensor) -> tuple[int, int]:
-    elem_bytes = tensor.element_size()
-    return 2 * tensor.numel() * elem_bytes, 0
 
 
 def bench_copy(backend: str) -> list[PerformanceResult]:
@@ -29,17 +23,14 @@ def bench_copy(backend: str) -> list[PerformanceResult]:
         out = torch.empty_like(src)
         from operator_runtime import prepare_copy
         with prepare_copy(out, src, backend=backend) as prepared:
-            runtime = cuda_time_ms(prepared.run)
-        torch_ms = cuda_time_ms(lambda: out.copy_(src))
-        bytes_, flops = _estimate_copy(src)
+            runtime = cuda_time_ms(prepared.run_inputs, args=(src,))
+        torch_ms = cuda_time_ms(lambda src: out.copy_(src), args=(src,))
         rows.append(
             PerformanceResult(
                 "copy",
                 backend,
                 str(tuple(src.shape)),
                 str(src.dtype),
-                bytes_,
-                flops,
                 runtime,
                 torch_ms,
             )

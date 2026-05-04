@@ -25,9 +25,18 @@ class TileLangSoftmaxPrepared:
     dim: int = 1
     kernel: object | None = None
 
-    def run(self) -> None:
+    def run_inputs(self, *inputs: torch.Tensor) -> torch.Tensor:
+        if len(inputs) not in (0, 1):
+            raise ValueError(f"expected 0 or 1 input tensors, got {len(inputs)}")
+        src = self.src if not inputs else inputs[0]
         assert self.kernel is not None
-        self.out.copy_(self.kernel(self.src))
+        return self.kernel(src)
+
+    def run_kernel(self) -> torch.Tensor:
+        return self.run_inputs()
+
+    def run(self) -> None:
+        self.out.copy_(self.run_inputs())
 
     def destroy(self) -> None:
         pass
