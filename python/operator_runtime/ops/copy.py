@@ -5,7 +5,8 @@ import ctypes
 import torch
 
 from operator_runtime.backend import Backend, normalize_backend
-from operator_runtime._runtime import Descriptor, bind_unary, check_status, PreparedOp, tensor_view
+from operator_runtime._internal import PreparedOp, bind_unary, tensor_view
+from operator_runtime.ops._common import build_prepared_op
 
 
 def _check(out: torch.Tensor, src: torch.Tensor) -> None:
@@ -30,15 +31,10 @@ def prepare_copy(out: torch.Tensor, src: torch.Tensor, backend: str | Backend = 
         raise NotImplementedError(f"backend {backend.value} is not runnable")
 
     funcs = bind_unary("copy")
-    desc = Descriptor()
     out_view = tensor_view(out)
     src_view = tensor_view(src)
-    check_status(funcs.create(ctypes.byref(desc), ctypes.byref(out_view), ctypes.byref(src_view)))
-    workspace_size = ctypes.c_size_t()
-    check_status(funcs.workspace(desc, ctypes.byref(workspace_size)))
-    workspace = torch.empty(workspace_size.value, dtype=torch.uint8, device=out.device) if workspace_size.value else None
-    args = (ctypes.c_void_p(out.data_ptr()), ctypes.c_void_p(src.data_ptr()))
-    return PreparedOp(funcs, desc, workspace, args, out)
+    create_args = (ctypes.byref(out_view), ctypes.byref(src_view))
+    return build_prepared_op(funcs, create_args, (out, src), out)
 
 
 def copy_(out: torch.Tensor, src: torch.Tensor, backend: str | Backend = Backend.NVIDIA) -> torch.Tensor:
@@ -50,4 +46,3 @@ def copy_(out: torch.Tensor, src: torch.Tensor, backend: str | Backend = Backend
 def copy(src: torch.Tensor, backend: str | Backend = Backend.NVIDIA) -> torch.Tensor:
     out = torch.empty_like(src)
     return copy_(out, src, backend)
-

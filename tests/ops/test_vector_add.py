@@ -5,7 +5,7 @@ import torch
 
 from operator_runtime import vector_add, vector_add_
 from operator_runtime.ops.vector_add import prepare_vector_add
-from operator_runtime.testing import assert_close, require_cuda
+from operator_runtime_testing import assert_close, require_cuda
 from tests.cases import vector_add as vector_add_cases
 
 

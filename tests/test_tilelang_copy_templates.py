@@ -5,7 +5,7 @@ import importlib.util
 import pytest
 import torch
 
-from operator_runtime.testing import require_cuda
+from operator_runtime_testing import require_cuda
 
 pytestmark = pytest.mark.skipif(
     importlib.util.find_spec("tilelang") is None,

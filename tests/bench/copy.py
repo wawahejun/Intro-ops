@@ -13,7 +13,7 @@ if str(ROOT) not in sys.path:
 import torch
 
 from operator_runtime import copy
-from operator_runtime.testing import cuda_time_ms, PerformanceResult
+from operator_runtime_testing import cuda_time_ms, PerformanceResult
 from tests.cases import copy as copy_cases
 
 

@@ -1,6 +1,6 @@
 from .loader import load_library
 from .tensor_view import TensorView, tensor_view, dtype_to_oprt, current_stream_ptr, OPRT_MAX_DIMS
-from .ctypes_bindings import (
+from .bindings import (
     CFunctions,
     Descriptor,
     OperatorRuntimeError,

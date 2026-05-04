@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from operator_runtime import copy, copy_
-from operator_runtime.testing import assert_close, require_cuda
+from operator_runtime_testing import assert_close, require_cuda
 from tests.cases import copy as copy_cases
 
 

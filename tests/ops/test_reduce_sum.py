@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from operator_runtime import reduce_sum, reduce_sum_
-from operator_runtime.testing import assert_close, require_cuda
+from operator_runtime_testing import assert_close, require_cuda
 from tests.cases import reduce_sum as reduce_sum_cases
 
 

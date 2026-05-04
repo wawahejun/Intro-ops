@@ -5,7 +5,8 @@ import ctypes
 import torch
 
 from operator_runtime.backend import Backend, normalize_backend
-from operator_runtime._runtime import Descriptor, bind_binary, check_status, PreparedOp, tensor_view
+from operator_runtime._internal import PreparedOp, bind_binary, tensor_view
+from operator_runtime.ops._common import build_prepared_op
 
 
 def _check(out: torch.Tensor, a: torch.Tensor, b: torch.Tensor) -> None:
@@ -35,16 +36,11 @@ def prepare_vector_add(
         raise NotImplementedError(f"backend {backend.value} is not runnable")
 
     funcs = bind_binary("vector_add")
-    desc = Descriptor()
     out_view = tensor_view(out)
     a_view = tensor_view(a)
     b_view = tensor_view(b)
-    check_status(funcs.create(ctypes.byref(desc), ctypes.byref(out_view), ctypes.byref(a_view), ctypes.byref(b_view)))
-    workspace_size = ctypes.c_size_t()
-    check_status(funcs.workspace(desc, ctypes.byref(workspace_size)))
-    workspace = torch.empty(workspace_size.value, dtype=torch.uint8, device=out.device) if workspace_size.value else None
-    args = (ctypes.c_void_p(out.data_ptr()), ctypes.c_void_p(a.data_ptr()), ctypes.c_void_p(b.data_ptr()))
-    return PreparedOp(funcs, desc, workspace, args, out)
+    create_args = (ctypes.byref(out_view), ctypes.byref(a_view), ctypes.byref(b_view))
+    return build_prepared_op(funcs, create_args, (out, a, b), out)
 
 
 def vector_add_(out: torch.Tensor, a: torch.Tensor, b: torch.Tensor, backend: str | Backend = Backend.NVIDIA) -> torch.Tensor:
@@ -56,4 +52,3 @@ def vector_add_(out: torch.Tensor, a: torch.Tensor, b: torch.Tensor, backend: st
 def vector_add(a: torch.Tensor, b: torch.Tensor, backend: str | Backend = Backend.NVIDIA) -> torch.Tensor:
     out = torch.empty_like(a)
     return vector_add_(out, a, b, backend)
-

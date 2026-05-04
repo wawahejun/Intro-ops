@@ -4,7 +4,7 @@ import pytest
 import torch
 
 from operator_runtime import softmax, softmax_
-from operator_runtime.testing import assert_close, require_cuda
+from operator_runtime_testing import assert_close, require_cuda
 from tests.cases import softmax as softmax_cases
 
 

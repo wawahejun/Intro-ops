@@ -123,4 +123,3 @@ def bind_reduce_like(name: str) -> CFunctions:
     destroy.argtypes = [Descriptor]
     destroy.restype = Status
     return CFunctions(create, workspace, execute, destroy)
-

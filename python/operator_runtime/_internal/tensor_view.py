@@ -52,4 +52,3 @@ def current_stream_ptr(tensor: torch.Tensor | None = None) -> ctypes.c_void_p:
     device = tensor.device if tensor is not None and tensor.is_cuda else None
     stream = torch.cuda.current_stream(device=device)
     return ctypes.c_void_p(stream.cuda_stream)
-

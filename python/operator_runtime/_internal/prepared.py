@@ -6,7 +6,7 @@ from typing import Any
 
 import torch
 
-from .ctypes_bindings import CFunctions, Descriptor, check_status
+from .bindings import CFunctions, Descriptor, check_status
 
 
 @dataclass
@@ -46,4 +46,3 @@ class PreparedOp:
             self.destroy()
         except Exception:
             pass
-
