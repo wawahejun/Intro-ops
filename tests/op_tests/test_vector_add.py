@@ -45,7 +45,7 @@ def test_vector_add_api_contract(case, backend):
 
 def test_prepared_vector_add_reuses_descriptor(backend):
     require_cuda()
-    if backend != "nvidia":
+    if backend == "tilelang":
         pytest.skip("descriptor lifecycle test targets C ABI backend")
     a = torch.randn((1024,), device="cuda")
     b = torch.randn((1024,), device="cuda")

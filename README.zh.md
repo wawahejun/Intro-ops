@@ -27,10 +27,10 @@ python/
 
 | 算子 | NVIDIA C++ | TileLang | MetaX |
 | --- | --- | --- | --- |
-| `copy` | 可运行 | 安装 TileLang 后可运行 | stub |
-| `vector_add` | 可运行 | 安装 TileLang 后可运行 | stub |
-| `reduce_sum` | 可运行，row-wise fp32 | 安装 TileLang 后可运行 | stub |
-| `softmax` | 可运行，row-wise fp32 | 安装 TileLang 后可运行 | stub |
+| `copy` | 可运行 | 安装 TileLang 后可运行 | 可运行 |
+| `vector_add` | 可运行 | 安装 TileLang 后可运行 | 可运行 |
+| `reduce_sum` | 可运行，row-wise fp32 | 安装 TileLang 后可运行 | 可运行，row-wise fp32 |
+| `softmax` | 可运行，row-wise fp32 | 安装 TileLang 后可运行 | 可运行，row-wise fp32 |
 
 ## 安装
 
@@ -47,6 +47,10 @@ cmake .. -DCAMP_ENABLE_NVIDIA=ON -DCAMP_ENABLE_METAX=OFF
 cmake --build . -j$(nproc)
 ```
 
+```bash
+./scripts/build_metax.sh build
+```
+
 ## 验证
 
 ```bash
@@ -54,9 +58,10 @@ python tests/run_ops.py --op copy --backend nvidia --mode all
 CAMP_BUILD_DIR=build pytest tests/ -v --backend nvidia
 pytest tests/ -v --backend tilelang
 python tests/run_ops.py --op all --backend nvidia --mode bench
+./scripts/build_metax.sh test
 ```
 
-TileLang 后端需要安装 `tilelang` Python 包。
+TileLang 后端需要安装 `tilelang` Python 包。MetaX 后端使用独立构建产物，构建时应关闭 NVIDIA 变体，并将后端源码放在 `ops/*/metax/*.maca`。
 
 ## 生产映射
 

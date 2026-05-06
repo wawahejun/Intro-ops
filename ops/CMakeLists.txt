@@ -1,5 +1,6 @@
 # Convention: operator CUDA sources auto-discovered by directory layout:
 #   ops/<operator>/nvidia/*.cu  ->  compiled when CAMP_ENABLE_NVIDIA is ON
+#   ops/<operator>/metax/*.maca ->  compiled when CAMP_ENABLE_METAX is ON
 # After adding a new operator, re-run cmake to pick up new files.
 
 set(CAMP_COMMON_SOURCES
@@ -13,13 +14,28 @@ if(CAMP_ENABLE_NVIDIA)
   )
 endif()
 
-set(CAMP_OPERATOR_SOURCES ${CAMP_COMMON_SOURCES} ${CAMP_NVIDIA_SOURCES})
+set(CAMP_METAX_SOURCES "")
+if(CAMP_ENABLE_METAX)
+  file(GLOB_RECURSE CAMP_METAX_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/*/metax/*.maca
+  )
+  set_source_files_properties(${CAMP_METAX_SOURCES} PROPERTIES LANGUAGE MACA)
+endif()
+
+set(CAMP_OPERATOR_SOURCES ${CAMP_COMMON_SOURCES} ${CAMP_NVIDIA_SOURCES} ${CAMP_METAX_SOURCES})
 
 add_library(camp_ops SHARED ${CAMP_OPERATOR_SOURCES})
 target_include_directories(camp_ops PUBLIC
   "${CMAKE_CURRENT_SOURCE_DIR}/.."
   "${CMAKE_CURRENT_SOURCE_DIR}/../include"
 )
+
+if(CAMP_ENABLE_METAX)
+  target_include_directories(camp_ops PRIVATE ${MetaX_INCLUDE_DIRS})
+  target_link_libraries(camp_ops PRIVATE ${MetaX_LIBRARIES})
+  target_compile_options(camp_ops PRIVATE ${CAMP_METAX_COMPILE_OPTIONS})
+  set_target_properties(camp_ops PROPERTIES LINKER_LANGUAGE MACA)
+endif()
 
 target_compile_definitions(camp_ops PRIVATE
   $<$<BOOL:${CAMP_ENABLE_NVIDIA}>:CAMP_ENABLE_NVIDIA=1>

@@ -34,10 +34,10 @@ def prepare_softmax(
         from ops.softmax.tilelang.softmax_tl import prepare_softmax_tl
 
         return prepare_softmax_tl(out, src, dim=dim)
-    if backend is not Backend.NVIDIA:
+    if backend not in (Backend.NVIDIA, Backend.METAX):
         raise NotImplementedError(f"backend {backend.value} is not runnable")
 
-    funcs = bind_reduce_like("softmax")
+    funcs = bind_reduce_like("softmax", backend)
     out_view = tensor_view(out)
     src_view = tensor_view(src)
     create_args = (ctypes.byref(out_view), ctypes.byref(src_view), ctypes.c_int64(dim))

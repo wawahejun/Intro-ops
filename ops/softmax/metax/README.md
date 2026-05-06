@@ -1,5 +1,4 @@
-# Softmax MetaX Stub
+# Softmax MetaX Backend
 
-The softmax ABI mirrors the NVIDIA lifecycle. Add `.maca` sources and htcc/mxcc
-rules when MetaX hardware is available.
-
+The softmax MetaX backend exports the standard descriptor lifecycle with
+`_metax` symbols and is built from `ops/softmax/metax/softmax_metax.maca`.

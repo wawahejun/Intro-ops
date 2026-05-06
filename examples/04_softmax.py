@@ -15,7 +15,7 @@ from operator_runtime import softmax
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--backend", default="nvidia", choices=["nvidia", "tilelang"])
+    parser.add_argument("--backend", default="nvidia", choices=["nvidia", "tilelang", "metax"])
     args = parser.parse_args()
 
     src = torch.randn((32, 128), device="cuda", dtype=torch.float32)

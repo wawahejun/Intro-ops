@@ -28,10 +28,10 @@ python/
 
 | Operator | NVIDIA C++ | TileLang | MetaX |
 | --- | --- | --- | --- |
-| `copy` | runnable | runnable when TileLang is installed | stub |
-| `vector_add` | runnable | runnable when TileLang is installed | stub |
-| `reduce_sum` | runnable, row-wise fp32 | runnable when TileLang is installed | stub |
-| `softmax` | runnable, row-wise fp32 | runnable when TileLang is installed | stub |
+| `copy` | runnable | runnable when TileLang is installed | runnable |
+| `vector_add` | runnable | runnable when TileLang is installed | runnable |
+| `reduce_sum` | runnable, row-wise fp32 | runnable when TileLang is installed | runnable, row-wise fp32 |
+| `softmax` | runnable, row-wise fp32 | runnable when TileLang is installed | runnable, row-wise fp32 |
 
 ## Setup
 
@@ -48,6 +48,10 @@ cmake .. -DCAMP_ENABLE_NVIDIA=ON -DCAMP_ENABLE_METAX=OFF
 cmake --build . -j$(nproc)
 ```
 
+```bash
+./scripts/build_metax.sh build
+```
+
 ## Validate
 
 ```bash
@@ -55,9 +59,10 @@ python tests/run_ops.py --op copy --backend nvidia --mode all
 CAMP_BUILD_DIR=build pytest tests/ -v --backend nvidia
 pytest tests/ -v --backend tilelang
 python tests/run_ops.py --op all --backend nvidia --mode bench
+./scripts/build_metax.sh test
 ```
 
-The TileLang backend requires the `tilelang` Python package.
+The TileLang backend requires the `tilelang` Python package. The MetaX backend is built as a separate variant, should use `CAMP_ENABLE_NVIDIA=OFF`, and stores backend sources under `ops/*/metax/*.maca`.
 
 ## Production Mapping
 

@@ -32,10 +32,10 @@ def prepare_vector_add(
         from ops.vector_add.tilelang.vector_add_tl import prepare_vector_add_tl
 
         return prepare_vector_add_tl(out, a, b)
-    if backend is not Backend.NVIDIA:
+    if backend not in (Backend.NVIDIA, Backend.METAX):
         raise NotImplementedError(f"backend {backend.value} is not runnable")
 
-    funcs = bind_binary("vector_add")
+    funcs = bind_binary("vector_add", backend)
     out_view = tensor_view(out)
     a_view = tensor_view(a)
     b_view = tensor_view(b)

@@ -1,13 +1,12 @@
-# MetaX Backend Stub
+# MetaX Backend
 
-The training runtime keeps MetaX interfaces aligned with NVIDIA interfaces, but
-does not build MetaX code by default.
+The training runtime keeps MetaX interfaces aligned with the compiled C ABI
+backends and builds MetaX as a separate variant through MACA/cu-bridge.
 
-A production integration should add:
+Current expectations:
 
-- MACA SDK discovery (`MACA_PATH`)
-- htcc/mxcc compiler rules
-- `.maca` source handling
-- hcruntime/mcruntime link rules
-- backend-specific CI on MetaX hardware
-
+- discover the MACA SDK from `MACA_PATH` or `/opt/maca`
+- build with `cmake_maca` and `ninja_maca`
+- compile `ops/*/metax/*.maca` into `libcamp_ops.so`
+- load `_metax` ABI symbols from Python FFI
+- validate on a MetaX-enabled PyTorch environment that exposes `cuda:0`

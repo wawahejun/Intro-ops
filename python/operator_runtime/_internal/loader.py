@@ -17,6 +17,8 @@ def _candidate_library_paths() -> list[Path]:
         [
             repo_root / "build" / "libcamp_ops.so",
             repo_root / "build" / "ops" / "libcamp_ops.so",
+            repo_root / "build-metax" / "libcamp_ops.so",
+            repo_root / "build-metax" / "ops" / "libcamp_ops.so",
         ]
     )
     return candidates

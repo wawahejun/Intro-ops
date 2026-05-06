@@ -27,10 +27,10 @@ def prepare_copy(out: torch.Tensor, src: torch.Tensor, backend: str | Backend = 
         from ops.copy.tilelang.copy_tl import prepare_copy_tl
 
         return prepare_copy_tl(out, src)
-    if backend is not Backend.NVIDIA:
+    if backend not in (Backend.NVIDIA, Backend.METAX):
         raise NotImplementedError(f"backend {backend.value} is not runnable")
 
-    funcs = bind_unary("copy")
+    funcs = bind_unary("copy", backend)
     out_view = tensor_view(out)
     src_view = tensor_view(src)
     create_args = (ctypes.byref(out_view), ctypes.byref(src_view))

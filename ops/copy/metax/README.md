@@ -1,5 +1,4 @@
-# Copy MetaX Stub
+# Copy MetaX Backend
 
-The copy ABI mirrors the NVIDIA lifecycle. Add `.maca` sources and htcc/mxcc
-rules when MetaX hardware is available.
-
+The copy MetaX backend exports the standard descriptor lifecycle with `_metax`
+symbols and is built from `ops/copy/metax/copy_metax.maca`.

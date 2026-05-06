@@ -34,10 +34,10 @@ def prepare_reduce_sum(
         from ops.reduce_sum.tilelang.reduce_sum_tl import prepare_reduce_sum_tl
 
         return prepare_reduce_sum_tl(out, src, dim=dim)
-    if backend is not Backend.NVIDIA:
+    if backend not in (Backend.NVIDIA, Backend.METAX):
         raise NotImplementedError(f"backend {backend.value} is not runnable")
 
-    funcs = bind_reduce_like("reduce_sum")
+    funcs = bind_reduce_like("reduce_sum", backend)
     out_view = tensor_view(out)
     src_view = tensor_view(src)
     create_args = (ctypes.byref(out_view), ctypes.byref(src_view), ctypes.c_int64(dim))

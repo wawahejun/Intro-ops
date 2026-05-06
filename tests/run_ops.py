@@ -110,7 +110,7 @@ def main() -> int:
     ops = _discover_ops()
     parser = argparse.ArgumentParser()
     parser.add_argument("--op", choices=[*ops, "all"], default="all")
-    parser.add_argument("--backend", choices=["nvidia", "tilelang"], default="nvidia")
+    parser.add_argument("--backend", choices=["nvidia", "tilelang", "metax"], default="nvidia")
     parser.add_argument("--mode", choices=["test", "bench", "all"], default="all")
     args = parser.parse_args()
 
