@@ -1,9 +1,9 @@
-#include "ops/copy/nvidia/copy_cuda.h"
+#include "operator_runtime/ops/copy.h"
 
 #include "operator_runtime/descriptor.h"
-#include "operator_runtime/elementwise.h"
-#include "operator_runtime/tensor_checks.h"
-#include "operator_runtime/cuda_helpers.h"
+#include "operator_runtime/detail/elementwise.h"
+#include "operator_runtime/detail/tensor_checks.h"
+#include "operator_runtime/detail/cuda_helpers.h"
 #include "ops/copy/nvidia/kernel.cuh"
 
 #include <cuda_fp16.h>
@@ -33,7 +33,7 @@ oprt_status_t launch_copy(const CopyDescriptor *desc, void *dst, const void *src
 
 } // namespace
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_create_copy_descriptor_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_create_copy_descriptor(
     oprt_operator_descriptor_t *desc,
     const oprt_tensor_view_t *dst,
     const oprt_tensor_view_t *src) {
@@ -70,7 +70,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_create_copy_descriptor_nvidia(
     return OPRT_SUCCESS;
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_get_copy_workspace_size_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_get_copy_workspace_size(
     oprt_operator_descriptor_t desc,
     size_t *size) {
     if (desc == nullptr || size == nullptr) {
@@ -80,7 +80,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_get_copy_workspace_size_nvidia(
     return OPRT_SUCCESS;
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_execute_copy_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_execute_copy(
     oprt_operator_descriptor_t desc,
     void *,
     size_t workspace_size,
@@ -104,7 +104,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_execute_copy_nvidia(
     }
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_copy_descriptor_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_copy_descriptor(
     oprt_operator_descriptor_t desc) {
     delete desc;
     return OPRT_SUCCESS;

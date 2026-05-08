@@ -1,8 +1,8 @@
-#include "ops/softmax/nvidia/softmax_cuda.h"
+#include "operator_runtime/ops/softmax.h"
 
 #include "operator_runtime/descriptor.h"
-#include "operator_runtime/tensor_checks.h"
-#include "operator_runtime/cuda_helpers.h"
+#include "operator_runtime/detail/tensor_checks.h"
+#include "operator_runtime/detail/cuda_helpers.h"
 #include "ops/softmax/nvidia/kernel.cuh"
 
 #include <cuda_runtime.h>
@@ -34,7 +34,7 @@ bool is_rowwise_case(const oprt_tensor_view_t &out, const oprt_tensor_view_t &in
 
 } // namespace
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_create_softmax_descriptor_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_create_softmax_descriptor(
     oprt_operator_descriptor_t *desc,
     const oprt_tensor_view_t *out,
     const oprt_tensor_view_t *in,
@@ -66,7 +66,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_create_softmax_descriptor_nvidia(
     return OPRT_SUCCESS;
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_get_softmax_workspace_size_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_get_softmax_workspace_size(
     oprt_operator_descriptor_t desc,
     size_t *size) {
     if (desc == nullptr || size == nullptr) {
@@ -76,7 +76,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_get_softmax_workspace_size_nvidia(
     return OPRT_SUCCESS;
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_execute_softmax_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_execute_softmax(
     oprt_operator_descriptor_t desc,
     void *,
     size_t workspace_size,
@@ -98,7 +98,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_execute_softmax_nvidia(
     return OPRT_SUCCESS;
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_softmax_descriptor_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_softmax_descriptor(
     oprt_operator_descriptor_t desc) {
     delete desc;
     return OPRT_SUCCESS;

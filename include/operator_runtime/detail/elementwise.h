@@ -21,4 +21,3 @@ inline bool elementwise_fast_path(const oprt_tensor_view_t &out,
 } // namespace oprt
 
 #endif
-

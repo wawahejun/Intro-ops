@@ -69,7 +69,7 @@ The TileLang backend requires the `tilelang` Python package. The MetaX backend i
 | Training concept | Production equivalent |
 | --- | --- |
 | directory convention `ops/<op>/nvidia/*.cu` | build system auto-discovery / operator registry |
-| C header `ops/<op>/nvidia/<op>_cuda.h` | reviewed operator API contract |
+| C header `include/operator_runtime/ops/<op>.h` | reviewed operator API contract |
 | descriptor lifecycle | create, workspace, execute, destroy |
 | `tests/cases/<op>.py` | correctness, layout, and API contract coverage |
 | `PerformanceResult` | profiler report row with latency, bytes, flops, bandwidth |

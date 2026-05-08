@@ -1,9 +1,9 @@
-#include "ops/copy/metax/copy_metax.h"
+#include "operator_runtime/ops/copy.h"
 
-#include "operator_runtime/cuda_helpers.h"
+#include "operator_runtime/detail/cuda_helpers.h"
 #include "operator_runtime/descriptor.h"
-#include "operator_runtime/elementwise.h"
-#include "operator_runtime/tensor_checks.h"
+#include "operator_runtime/detail/elementwise.h"
+#include "operator_runtime/detail/tensor_checks.h"
 
 #include <cuda_fp16.h>
 
@@ -41,7 +41,7 @@ oprt_status_t launch_copy(const CopyDescriptor *desc, void *dst, const void *src
 
 } // namespace
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_create_copy_descriptor_metax(
+extern "C" OPRT_EXPORT oprt_status_t oprt_create_copy_descriptor(
     oprt_operator_descriptor_t *desc,
     const oprt_tensor_view_t *dst,
     const oprt_tensor_view_t *src) {
@@ -78,7 +78,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_create_copy_descriptor_metax(
     return OPRT_SUCCESS;
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_get_copy_workspace_size_metax(
+extern "C" OPRT_EXPORT oprt_status_t oprt_get_copy_workspace_size(
     oprt_operator_descriptor_t desc,
     size_t *size) {
     if (desc == nullptr || size == nullptr) {
@@ -88,7 +88,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_get_copy_workspace_size_metax(
     return OPRT_SUCCESS;
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_execute_copy_metax(
+extern "C" OPRT_EXPORT oprt_status_t oprt_execute_copy(
     oprt_operator_descriptor_t desc,
     void *,
     size_t workspace_size,
@@ -112,7 +112,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_execute_copy_metax(
     }
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_copy_descriptor_metax(
+extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_copy_descriptor(
     oprt_operator_descriptor_t desc) {
     delete desc;
     return OPRT_SUCCESS;

@@ -6,27 +6,27 @@
 extern "C" {
 #endif
 
-OPRT_EXPORT oprt_status_t oprt_create_copy_descriptor_nvidia(
+OPRT_EXPORT oprt_status_t oprt_create_softmax_descriptor(
     oprt_operator_descriptor_t *desc,
-    const oprt_tensor_view_t *dst,
-    const oprt_tensor_view_t *src);
+    const oprt_tensor_view_t *out,
+    const oprt_tensor_view_t *in,
+    int64_t axis);
 
-OPRT_EXPORT oprt_status_t oprt_get_copy_workspace_size_nvidia(
+OPRT_EXPORT oprt_status_t oprt_get_softmax_workspace_size(
     oprt_operator_descriptor_t desc,
     size_t *size);
 
-OPRT_EXPORT oprt_status_t oprt_execute_copy_nvidia(
+OPRT_EXPORT oprt_status_t oprt_execute_softmax(
     oprt_operator_descriptor_t desc,
     void *workspace,
     size_t workspace_size,
-    void *dst,
-    const void *src,
+    void *out,
+    const void *in,
     oprt_stream_t stream);
 
-OPRT_EXPORT oprt_status_t oprt_destroy_copy_descriptor_nvidia(
+OPRT_EXPORT oprt_status_t oprt_destroy_softmax_descriptor(
     oprt_operator_descriptor_t desc);
 
 #ifdef __cplusplus
 }
 #endif
-

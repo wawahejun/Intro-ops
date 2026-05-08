@@ -6,17 +6,17 @@
 extern "C" {
 #endif
 
-OPRT_EXPORT oprt_status_t oprt_create_softmax_descriptor_metax(
+OPRT_EXPORT oprt_status_t oprt_create_reduce_sum_descriptor(
     oprt_operator_descriptor_t *desc,
     const oprt_tensor_view_t *out,
     const oprt_tensor_view_t *in,
     int64_t axis);
 
-OPRT_EXPORT oprt_status_t oprt_get_softmax_workspace_size_metax(
+OPRT_EXPORT oprt_status_t oprt_get_reduce_sum_workspace_size(
     oprt_operator_descriptor_t desc,
     size_t *size);
 
-OPRT_EXPORT oprt_status_t oprt_execute_softmax_metax(
+OPRT_EXPORT oprt_status_t oprt_execute_reduce_sum(
     oprt_operator_descriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -24,7 +24,7 @@ OPRT_EXPORT oprt_status_t oprt_execute_softmax_metax(
     const void *in,
     oprt_stream_t stream);
 
-OPRT_EXPORT oprt_status_t oprt_destroy_softmax_descriptor_metax(
+OPRT_EXPORT oprt_status_t oprt_destroy_reduce_sum_descriptor(
     oprt_operator_descriptor_t desc);
 
 #ifdef __cplusplus

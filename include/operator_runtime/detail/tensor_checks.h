@@ -37,4 +37,3 @@ inline oprt_status_t check_same_shape(const oprt_tensor_view_t &a,
 } // namespace oprt
 
 #endif
-

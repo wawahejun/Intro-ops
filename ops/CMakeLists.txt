@@ -25,9 +25,11 @@ endif()
 set(CAMP_OPERATOR_SOURCES ${CAMP_COMMON_SOURCES} ${CAMP_NVIDIA_SOURCES} ${CAMP_METAX_SOURCES})
 
 add_library(camp_ops SHARED ${CAMP_OPERATOR_SOURCES})
-target_include_directories(camp_ops PUBLIC
-  "${CMAKE_CURRENT_SOURCE_DIR}/.."
-  "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+target_include_directories(camp_ops
+  PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/../include"
+  PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
 if(CAMP_ENABLE_METAX)

@@ -1,9 +1,9 @@
-#include "ops/vector_add/nvidia/vector_add_cuda.h"
+#include "operator_runtime/ops/vector_add.h"
 
 #include "operator_runtime/descriptor.h"
-#include "operator_runtime/elementwise.h"
-#include "operator_runtime/tensor_checks.h"
-#include "operator_runtime/cuda_helpers.h"
+#include "operator_runtime/detail/elementwise.h"
+#include "operator_runtime/detail/tensor_checks.h"
+#include "operator_runtime/detail/cuda_helpers.h"
 #include "ops/vector_add/nvidia/kernel.cuh"
 
 #include <cuda_fp16.h>
@@ -34,7 +34,7 @@ oprt_status_t launch_vector_add(const VectorAddDescriptor *desc, void *out, cons
 
 } // namespace
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_create_vector_add_descriptor_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_create_vector_add_descriptor(
     oprt_operator_descriptor_t *desc,
     const oprt_tensor_view_t *out,
     const oprt_tensor_view_t *a,
@@ -77,7 +77,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_create_vector_add_descriptor_nvidia(
     return OPRT_SUCCESS;
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_get_vector_add_workspace_size_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_get_vector_add_workspace_size(
     oprt_operator_descriptor_t desc,
     size_t *size) {
     if (desc == nullptr || size == nullptr) {
@@ -87,7 +87,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_get_vector_add_workspace_size_nvidia(
     return OPRT_SUCCESS;
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_execute_vector_add_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_execute_vector_add(
     oprt_operator_descriptor_t desc,
     void *,
     size_t workspace_size,
@@ -112,7 +112,7 @@ extern "C" OPRT_EXPORT oprt_status_t oprt_execute_vector_add_nvidia(
     }
 }
 
-extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_vector_add_descriptor_nvidia(
+extern "C" OPRT_EXPORT oprt_status_t oprt_destroy_vector_add_descriptor(
     oprt_operator_descriptor_t desc) {
     delete desc;
     return OPRT_SUCCESS;

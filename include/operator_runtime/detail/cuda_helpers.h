@@ -5,12 +5,12 @@
 #ifdef __CUDACC__
 #include <cuda_runtime.h>
 
-#define OPRT_CUDA_RETURN_IF_ERROR(expr)        \
-    do {                                       \
-        cudaError_t err__ = (expr);            \
-        if (err__ != cudaSuccess) {            \
-            return OPRT_ERR_RUNTIME;           \
-        }                                      \
+#define OPRT_CUDA_RETURN_IF_ERROR(expr) \
+    do { \
+        cudaError_t err__ = (expr); \
+        if (err__ != cudaSuccess) { \
+            return OPRT_ERR_RUNTIME; \
+        } \
     } while (0)
 
 namespace oprt {
@@ -27,4 +27,3 @@ inline int blocks_for(int64_t n, int threads) {
 } // namespace oprt
 
 #endif
-
