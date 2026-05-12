@@ -5,6 +5,9 @@
 #include "operator_runtime/detail/tensor_checks.h"
 #include "operator_runtime/detail/cuda_helpers.h"
 #include "ops/copy/nvidia/kernel.cuh"
+#ifdef CAMP_ENABLE_CUTE
+#include "ops/copy/nvidia/cute_copy.cuh"
+#endif
 
 #include <cuda_fp16.h>
 
@@ -25,8 +28,13 @@ oprt_status_t launch_copy(const CopyDescriptor *desc, void *dst, const void *src
     constexpr int threads = 256;
     int blocks = oprt::blocks_for(desc->elements, threads);
     cudaStream_t s = oprt::as_cuda_stream(stream);
+#ifdef CAMP_ENABLE_CUTE
+    oprt::copy::nvidia::launch_copy_contiguous_cute_l40<T>(
+        static_cast<T *>(dst), static_cast<const T *>(src), desc->elements, s);
+#else
     oprt::copy::nvidia::copy_contiguous_kernel<T><<<blocks, threads, 0, s>>>(
         static_cast<T *>(dst), static_cast<const T *>(src), desc->elements);
+#endif
     OPRT_CUDA_RETURN_IF_ERROR(cudaGetLastError());
     return OPRT_SUCCESS;
 }

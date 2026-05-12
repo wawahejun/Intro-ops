@@ -7,6 +7,8 @@ MACA_PATH="${MACA_PATH:-/opt/maca}"
 CUCC_PATH="${CUCC_PATH:-${MACA_PATH}/tools/cu-bridge}"
 CUDA_PATH="${CUDA_PATH:-${CUCC_PATH}}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
+CMAKE_GENERATOR="${CMAKE_GENERATOR:-Ninja}"
+CAMP_FORCE_RECONFIGURE="${CAMP_FORCE_RECONFIGURE:-0}"
 
 MODE="${1:-build}"
 
@@ -15,9 +17,17 @@ export CUCC_PATH
 export CUDA_PATH
 export LD_LIBRARY_PATH="${MACA_PATH}/lib:${LD_LIBRARY_PATH:-}"
 
-configure() {
+prepare_build_dir() {
   mkdir -p "${BUILD_DIR}"
-  "${PYTHON_BIN}" -m cmake -G Ninja "${ROOT}" \
+  if [[ "${CAMP_FORCE_RECONFIGURE}" == "1" ]]; then
+    rm -f "${BUILD_DIR}/CMakeCache.txt"
+    rm -rf "${BUILD_DIR}/CMakeFiles"
+  fi
+}
+
+configure() {
+  prepare_build_dir
+  "${PYTHON_BIN}" -m cmake -G "${CMAKE_GENERATOR}" "${ROOT}" \
     -B "${BUILD_DIR}" \
     -DCAMP_ENABLE_NVIDIA=OFF \
     -DCAMP_ENABLE_METAX=ON
@@ -43,6 +53,15 @@ test_examples() {
 }
 
 case "${MODE}" in
+  env)
+    echo "BUILD_DIR=${BUILD_DIR}"
+    echo "PYTHON_BIN=${PYTHON_BIN}"
+    echo "CMAKE_GENERATOR=${CMAKE_GENERATOR}"
+    echo "CAMP_FORCE_RECONFIGURE=${CAMP_FORCE_RECONFIGURE}"
+    echo "MACA_PATH=${MACA_PATH}"
+    echo "CUCC_PATH=${CUCC_PATH}"
+    echo "CUDA_PATH=${CUDA_PATH}"
+    ;;
   configure)
     configure
     ;;
@@ -66,7 +85,7 @@ case "${MODE}" in
     rm -rf "${BUILD_DIR}"
     ;;
   *)
-    echo "usage: $0 {configure|build|test|all|clean}" >&2
+    echo "usage: $0 {env|configure|build|test|all|clean}" >&2
     exit 2
     ;;
 esac

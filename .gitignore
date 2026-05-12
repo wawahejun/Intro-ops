@@ -1,4 +1,5 @@
 build/
+build-*/
 *.egg-info/
 __pycache__/
 .pytest_cache/
@@ -10,3 +11,4 @@ __pycache__/
 *.a
 *.log
 /generated/
+/third_party/

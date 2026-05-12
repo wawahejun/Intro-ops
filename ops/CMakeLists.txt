@@ -36,6 +36,12 @@ target_include_directories(camp_ops
     "${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
+if(CAMP_USE_CUTE)
+  target_include_directories(camp_ops PRIVATE ${CAMP_CUTE_TARGET_INCLUDE_DIRS})
+  target_compile_definitions(camp_ops PRIVATE CAMP_ENABLE_CUTE=1)
+  target_compile_options(camp_ops PRIVATE $<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr>)
+endif()
+
 if(CAMP_ENABLE_METAX)
   target_include_directories(camp_ops PRIVATE ${MetaX_INCLUDE_DIRS})
   target_link_libraries(camp_ops PRIVATE ${MetaX_LIBRARIES})

@@ -93,11 +93,11 @@
 
 ```bash
 # NVIDIA kernel（需要先重新编译）
-cd build && cmake .. && cmake --build . -j$(nproc)
-CAMP_BUILD_DIR=/workspace/build pytest tests/op_tests/test_<算子名>.py -v --backend nvidia
+./scripts/build_nvidia.sh build
+CAMP_BUILD_DIR=/workspace/build-nvidia pytest tests/op_tests/test_<算子名>.py -v --backend nvidia
 
 # TileLang kernel
-CAMP_BUILD_DIR=/workspace/build pytest tests/op_tests/test_<算子名>.py -v --backend tilelang
+CAMP_BUILD_DIR=/workspace/build-nvidia pytest tests/op_tests/test_<算子名>.py -v --backend tilelang
 ```
 
 四个算子两种后端全部通过，阶段一完成。

@@ -2,12 +2,14 @@
 
 ## 目标
 
-在当前项目里，新增一个可运行算子的最小闭环包括四部分。训练营同时保留两条路径：自定义算子路径用于教学手写 kernel 和特殊算子结构，elementwise 复用路径用于普通逐元素算子。
+在当前项目里，新增一个算子的最小闭环包括四部分。训练营同时保留两条并行路径：自定义算子路径用于教学 kernel 编写、特殊 layout、特殊 workspace 和非普通逐元素结构，elementwise 复用路径用于普通 unary / binary / broadcast / stride 逐元素算子。
 
 1. 在 `ops/<算子名>/` 下补自定义后端实现，或在 `ops/elementwise/<算子名>/` 下补复用 elementwise 框架的实现。
 2. 在 `python/operator_runtime/ops/` 下补 Python API。
 3. 在 `tests/` 下补正确性测试和 benchmark 入口。
 4. 重新构建并验证。
+
+当前仓库是训练营框架和练习骨架。`copy`、`vector_add`、`reduce_sum`、`softmax` 的第一阶段 kernel 文件仍保留 TODO，用来让学生补齐计算逻辑；`relu` 是已经接通的 elementwise 示例。
 
 
 ## Step 1：明确算子接口
@@ -21,13 +23,13 @@
 5. 是否需要额外参数，例如 `dim`、`scalar`。
 6. 是否需要 workspace。
 
-这一步的目的，是确定后面 C API 和 Python 绑定该按哪种模式实现。不要把“逐元素”简单等同于“必须用 elementwise 框架”：训练营会先用 `copy`、`vector_add` 展示自定义算子写法，再把复用 elementwise 框架作为后续作业和工程化路径。
+这一步的目的，是确定后面 C API 和 Python 绑定该按哪种模式实现。不要把“逐元素”简单等同于“必须用 elementwise 框架”：训练营会先用 `copy`、`vector_add` 展示自定义算子写法，也会保留 elementwise 复用路径作为普通逐元素算子的工程化选择。两条路径是并行选项，不是“先自定义、最后都迁移到 elementwise”的过渡关系。
 
 ## Step 2：创建算子目录
 
 先选择算子目录：
 
-- 自定义算子：放在 `ops/<算子名>/`。适合教学底层 kernel、固定 contiguous fast path、特殊 workspace、reduce/softmax 等非普通 elementwise 算子。
+- 自定义算子：放在 `ops/<算子名>/`。适合教学底层 kernel、固定 contiguous fast path、特殊 layout、特殊 workspace、reduce/softmax 等非普通 elementwise 算子，也允许写 CuTe/CUTLASS 风格 C++ 实现。
 - elementwise 复用算子：放在 `ops/elementwise/<算子名>/`。适合共享 shape、stride、broadcast 执行模型的 unary / binary / 多输入逐元素算子。
 
 `copy` 和 `vector_add` 是自定义算子教学示例。`relu` 是 elementwise 框架示例，目录为 `ops/elementwise/relu/nvidia/`，公共 NVIDIA launcher 位于 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`。
@@ -44,6 +46,28 @@
 
 如果后续要支持 TileLang 或 MetaX，再分别补 `tilelang/` 或 `metax/`。
 但对当前流程来说，NVIDIA 版本是最小必需项。
+
+## Step 2.5：选择实现风格
+
+自定义 NVIDIA 算子可以采用两种 C++ 实现风格：
+
+1. 原生 CUDA C++：直接在 `.cu` / `.cuh` 里写 `__global__` kernel。这是第一阶段默认训练方式，`copy`、`vector_add`、`reduce_sum`、`softmax` 都按这个方式组织。
+2. CuTe/CUTLASS 风格 C++：仍然放在 `ops/<算子名>/nvidia/`，仍然导出同一组 descriptor 生命周期符号，但内部可以使用 CuTe tensor、layout、copy atom、TiledMMA 等抽象。
+
+CuTe/CUTLASS 不是单独 backend，而是 NVIDIA backend 内部的可选实现依赖。`CAMP_ENABLE_NVIDIA=ON` 时，构建会默认自动探测 `cute/tensor.hpp`，来源包括 `CAMP_CUTLASS_ROOT`、`CAMP_CUTE_INCLUDE_DIRS`、`third_party/cutlass` 或 `CUTLASS_ROOT` / `CUTLASS_HOME` / `CUTLASS_PATH` 环境变量。找到后目标会定义 `CAMP_ENABLE_CUTE=1` 并把 include 目录加到 `camp_ops`；找不到时继续构建普通 CUDA C++ 算子。
+
+推荐约定是把 CUTLASS 源码 clone 到仓库根目录下的 `third_party/cutlass`，这样 `CAMP_ENABLE_NVIDIA=ON` 时就能自动探测，不需要每次手工传路径。
+
+如果你希望“找不到 CuTe 就直接失败”，可以显式打开强制模式：
+
+```bash
+cmake .. \
+  -DCAMP_ENABLE_NVIDIA=ON \
+  -DCAMP_ENABLE_CUTE=ON \
+  -DCAMP_CUTLASS_ROOT=/path/to/cutlass
+```
+
+也可以用 `"-DCAMP_CUTE_INCLUDE_DIRS=/path/a;/path/b"` 显式指定 include 目录。这个选项只提供框架扩展点，不要求第一阶段学生必须使用 CuTe。
 
 ## Step 3：实现 NVIDIA 后端
 
@@ -64,6 +88,15 @@
 3. workspace 复用 `oprt::get_elementwise_workspace_size`。
 4. execute 阶段只做 dtype dispatch，并调用 `oprt::elementwise::nvidia::launch<T, N>(...)`。
 5. 算子自身只提供 device functor，例如 `relu` 的 `value > 0 ? value : value * negative_slope`。
+
+elementwise 路径推荐覆盖：
+
+1. 输出 shape 由输入 broadcast 得出，或由调用方提供的 out 固定。
+2. 每个输出元素可以独立计算。
+3. 输入之间只需要普通 shape/stride/broadcast 索引。
+4. 不需要跨元素同步、规约、排序、扫描、复杂临时 workspace 或特殊数据布局。
+
+不满足这些条件时，优先走自定义算子路径。
 
 一个 NVIDIA 算子需要完整提供四个生命周期接口：
 
@@ -167,12 +200,13 @@ API contract 测试主要覆盖 shape 不匹配、dtype 不匹配、非 contiguo
 
 顺序是：
 
-1. 进入 `build/` 目录。
-2. 重新执行 `cmake ..`。
-3. 再执行编译。
+1. 重新执行 `./scripts/build_nvidia.sh configure`，或手工进入 `build-nvidia/` 后重新执行 `cmake ..`。
+2. 再执行 `./scripts/build_nvidia.sh build`，或手工执行编译。
 
 如果你只改了 Python，不新增 `.cu`，通常不需要重新配置。
 但只要新加了 NVIDIA 源文件，就必须重新跑一次 CMake。
+
+当前构建策略是统一 API、单 backend 产物：NVIDIA 和 MetaX 不要求编进同一个 `libcamp_ops.so`。每个环境按本机硬件构建一个 backend 版本；Python / C ABI 保持统一 backend 参数；当前库只接受已编译进来的 backend，未启用 backend 返回 `not supported`。
 
 ## Step 10：验证
 
@@ -201,11 +235,11 @@ API contract 测试主要覆盖 shape 不匹配、dtype 不匹配、非 contiguo
 
 ## 现有模板怎么选
 
-- `copy`：适合最简单的自定义单输入单输出流程。
-- `vector_add`：适合标准 contiguous 双输入自定义算子。
+- `copy`：适合最简单的自定义单输入单输出流程，当前第一阶段 kernel 逻辑保留 TODO。
+- `vector_add`：适合标准 contiguous 双输入自定义算子，当前第一阶段 kernel 逻辑保留 TODO。
 - `relu`：适合复用 elementwise 框架的单输入逐元素算子，也展示了额外标量参数 `negative_slope` 的 C/Python 绑定方式。
-- `reduce_sum`：适合带 reduce 维度的算子。
-- `softmax`：适合带更明确 shape 约束和归一化逻辑的算子。
+- `reduce_sum`：适合带 reduce 维度的算子，当前第一阶段 kernel 逻辑保留 TODO。
+- `softmax`：适合带更明确 shape 约束和归一化逻辑的算子，当前第一阶段 kernel 逻辑保留 TODO。
 
 如果新算子本质上是普通 elementwise，优先参考 `relu`、`ElementwiseOpSpec` 和 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`；如果课程目标是练习手写 contiguous kernel，再参考 `copy` 或 `vector_add` 的自定义路径。
 
@@ -219,5 +253,5 @@ API contract 测试主要覆盖 shape 不匹配、dtype 不匹配、非 contiguo
 4. `tests/cases/<算子名>.py` 已补数据。
 5. `tests/op_tests/test_<算子名>.py` 已补测试。
 6. `tests/bench/<算子名>.py` 已补 benchmark。
-7. 新增 `.cu` 后已经重新执行过 `cmake ..`。
+7. 新增 `.cu` 后已经重新执行过 `./scripts/build_nvidia.sh configure` 或等价的 `cmake ..`。
 8. 至少完成一次单算子验证。
