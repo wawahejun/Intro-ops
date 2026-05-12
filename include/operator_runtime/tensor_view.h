@@ -49,7 +49,18 @@ inline bool same_shape(const oprt_tensor_view_t &a, const oprt_tensor_view_t &b)
     return true;
 }
 
+inline bool has_broadcast_dim(const oprt_tensor_view_t &view) {
+    if (view.ndim < 0 || view.ndim > OPRT_MAX_DIMS) {
+        return false;
+    }
+    for (int32_t i = 0; i < view.ndim; ++i) {
+        if (view.shape[i] > 1 && view.strides[i] == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace oprt
 
 #endif
-

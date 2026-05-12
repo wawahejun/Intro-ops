@@ -4,7 +4,7 @@
 
 在当前项目里，新增一个可运行算子的最小闭环包括四部分：
 
-1. 在 `ops/<算子名>/` 下补后端实现。
+1. 在 `ops/<算子名>/` 下补后端实现；普通逐元素算子优先放到 `ops/elementwise/<算子名>/`。
 2. 在 `python/operator_runtime/ops/` 下补 Python API。
 3. 在 `tests/` 下补正确性测试和 benchmark 入口。
 4. 重新构建并验证。
@@ -25,11 +25,18 @@
 
 ## Step 2：创建算子目录
 
-先在 `ops/<算子名>/` 下建立对应目录。
+先选择算子目录：
+
+- 普通手写 kernel：放在 `ops/<算子名>/`。
+- 可复用公共 shape/stride/broadcast 逐元素框架的算子：放在 `ops/elementwise/<算子名>/`。
+
+`relu` 是 elementwise 框架示例，目录为 `ops/elementwise/relu/nvidia/`，公共 NVIDIA launcher 位于 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`。
+
+先在选定目录下建立对应后端目录。
 
 当前建议至少补齐：
 
-- `ops/<算子名>/nvidia/`
+- `ops/<算子名>/nvidia/` 或 `ops/elementwise/<算子名>/nvidia/`
 - `python/operator_runtime/ops/<算子名>.py`
 - `tests/cases/<算子名>.py`
 - `tests/op_tests/test_<算子名>.py`
@@ -40,15 +47,23 @@
 
 ## Step 3：实现 NVIDIA 后端
 
-`ops/<算子名>/nvidia/` 这一层负责 C++/CUDA 实现。
+`ops/<算子名>/nvidia/` 或 `ops/elementwise/<算子名>/nvidia/` 这一层负责 C++/CUDA 实现。
 
-通常需要这几部分：
+普通手写 kernel 通常需要这几部分：
 
 1. kernel 文件
 2. C API 头文件
 3. C API 实现文件
 
 这里最关键的是保持现有命名约定一致，因为 Python 侧会按固定符号名去找函数。
+
+如果是 elementwise 算子，不需要每个算子重复写 shape/stride kernel。推荐复用 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`：
+
+1. descriptor 中保存 `oprt::ElementwiseInfo`。
+2. create 阶段调用 `oprt::create_elementwise_info(out, {inputs...}, &info)`。
+3. workspace 返回 `info.workspace_bytes()`。
+4. execute 阶段只做 dtype dispatch，并调用 `oprt::elementwise::nvidia::launch<T, N>(...)`。
+5. 算子自身只提供 device functor，例如 `relu` 的 `value > 0 ? value : value * negative_slope`。
 
 一个 NVIDIA 算子需要完整提供四个生命周期接口：
 
@@ -138,7 +153,7 @@ API contract 测试主要覆盖 shape 不匹配、dtype 不匹配、非 contiguo
 
 ## Step 9：重新配置和编译
 
-因为 `ops/CMakeLists.txt` 是通过 glob 自动发现 `ops/*/nvidia/*.cu`，所以新增 `.cu` 之后要重新配置。
+因为 `ops/CMakeLists.txt` 是通过 glob 自动发现 `ops/*/nvidia/*.cu` 和 `ops/elementwise/*/nvidia/*.cu`，所以新增 `.cu` 之后要重新配置。
 
 顺序是：
 
@@ -177,17 +192,18 @@ API contract 测试主要覆盖 shape 不匹配、dtype 不匹配、非 contiguo
 ## 现有模板怎么选
 
 - `copy`：适合最简单的单输入单输出流程。
-- `vector_add`：适合标准 elementwise 双输入算子。
+- `vector_add`：适合标准 contiguous 双输入算子。
+- `relu`：适合复用 elementwise 框架的单输入逐元素算子，也展示了额外标量参数 `negative_slope` 的 C/Python 绑定方式。
 - `reduce_sum`：适合带 reduce 维度的算子。
 - `softmax`：适合带更明确 shape 约束和归一化逻辑的算子。
 
-如果新算子本质上是普通 elementwise，优先参考 `vector_add`。
+如果新算子本质上是普通 elementwise，优先参考 `relu` 和 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`；如果只想写最简单 contiguous kernel，再参考 `vector_add`。
 
 ## 最终检查清单
 
 提交前至少确认以下内容都已完成：
 
-1. `ops/<算子名>/nvidia/` 已补齐实现。
+1. `ops/<算子名>/nvidia/` 或 `ops/elementwise/<算子名>/nvidia/` 已补齐实现。
 2. `python/operator_runtime/ops/<算子名>.py` 已补齐。
 3. 两个 `__init__.py` 已导出新接口。
 4. `tests/cases/<算子名>.py` 已补数据。

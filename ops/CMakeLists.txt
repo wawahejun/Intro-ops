@@ -1,6 +1,8 @@
 # Convention: operator CUDA sources auto-discovered by directory layout:
 #   ops/<operator>/nvidia/*.cu  ->  compiled when CAMP_ENABLE_NVIDIA is ON
+#   ops/elementwise/<operator>/nvidia/*.cu  ->  compiled when CAMP_ENABLE_NVIDIA is ON
 #   ops/<operator>/metax/*.maca ->  compiled when CAMP_ENABLE_METAX is ON
+#   ops/elementwise/<operator>/metax/*.maca ->  compiled when CAMP_ENABLE_METAX is ON
 # After adding a new operator, re-run cmake to pick up new files.
 
 set(CAMP_COMMON_SOURCES
@@ -11,6 +13,7 @@ set(CAMP_NVIDIA_SOURCES "")
 if(CAMP_ENABLE_NVIDIA)
   file(GLOB_RECURSE CAMP_NVIDIA_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/*/nvidia/*.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/elementwise/*/nvidia/*.cu
   )
 endif()
 
@@ -18,6 +21,7 @@ set(CAMP_METAX_SOURCES "")
 if(CAMP_ENABLE_METAX)
   file(GLOB_RECURSE CAMP_METAX_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/*/metax/*.maca
+    ${CMAKE_CURRENT_SOURCE_DIR}/elementwise/*/metax/*.maca
   )
   set_source_files_properties(${CAMP_METAX_SOURCES} PROPERTIES LANGUAGE MACA)
 endif()

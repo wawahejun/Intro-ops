@@ -84,6 +84,55 @@ def bind_unary(name: str, backend: str | Backend = Backend.NVIDIA) -> CFunctions
     return CFunctions(create, workspace, execute, destroy)
 
 
+def bind_relu(backend: str | Backend = Backend.NVIDIA) -> CFunctions:
+    lib = load_library()
+    name = "relu"
+    create_symbol = "oprt_create_relu_descriptor"
+    try:
+        create = getattr(lib, create_symbol)
+    except AttributeError as exc:
+        _missing_symbol_error(name, create_symbol, exc)
+    create.argtypes = [
+        ctypes.POINTER(Descriptor),
+        ctypes.POINTER(TensorView),
+        ctypes.POINTER(TensorView),
+        ctypes.c_float,
+    ]
+    create.restype = Status
+
+    workspace_symbol = "oprt_get_relu_workspace_size"
+    try:
+        workspace = getattr(lib, workspace_symbol)
+    except AttributeError as exc:
+        _missing_symbol_error(name, workspace_symbol, exc)
+    workspace.argtypes = [Descriptor, ctypes.POINTER(ctypes.c_size_t)]
+    workspace.restype = Status
+
+    execute_symbol = "oprt_execute_relu"
+    try:
+        execute = getattr(lib, execute_symbol)
+    except AttributeError as exc:
+        _missing_symbol_error(name, execute_symbol, exc)
+    execute.argtypes = [
+        Descriptor,
+        ctypes.c_void_p,
+        ctypes.c_size_t,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+        ctypes.c_void_p,
+    ]
+    execute.restype = Status
+
+    destroy_symbol = "oprt_destroy_relu_descriptor"
+    try:
+        destroy = getattr(lib, destroy_symbol)
+    except AttributeError as exc:
+        _missing_symbol_error(name, destroy_symbol, exc)
+    destroy.argtypes = [Descriptor]
+    destroy.restype = Status
+    return CFunctions(create, workspace, execute, destroy)
+
+
 def bind_binary(name: str, backend: str | Backend = Backend.NVIDIA) -> CFunctions:
     lib = load_library()
     create_symbol = f"oprt_create_{name}_descriptor"
