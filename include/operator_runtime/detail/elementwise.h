@@ -1,5 +1,6 @@
 #pragma once
 
+#include "operator_runtime/descriptor.h"
 #include "operator_runtime/tensor_view.h"
 #include "operator_runtime/detail/tensor_checks.h"
 
@@ -178,6 +179,68 @@ inline oprt_status_t create_elementwise_info(const oprt_tensor_view_t *out,
     }
 
     *info = std::move(next);
+    return OPRT_SUCCESS;
+}
+
+struct ElementwiseDescriptorBase : oprt_operator_descriptor {
+    oprt_tensor_view_t out_view{};
+    std::vector<oprt_tensor_view_t> input_views;
+    oprt::ElementwiseInfo info;
+};
+
+inline oprt_status_t init_elementwise_descriptor(ElementwiseDescriptorBase *desc,
+                                                 const oprt_tensor_view_t *out,
+                                                 const std::vector<const oprt_tensor_view_t *> &inputs) {
+    if (desc == nullptr || out == nullptr || inputs.empty()) {
+        return OPRT_ERR_INVALID_ARG;
+    }
+
+    oprt::ElementwiseInfo info;
+    auto status = oprt::create_elementwise_info(out, inputs, &info);
+    if (status != OPRT_SUCCESS) {
+        return status;
+    }
+
+    desc->out_view = *out;
+    desc->input_views.clear();
+    desc->input_views.reserve(inputs.size());
+    for (const auto *input : inputs) {
+        desc->input_views.push_back(*input);
+    }
+    desc->info = std::move(info);
+    desc->workspace_size = desc->info.workspace_bytes();
+    return OPRT_SUCCESS;
+}
+
+inline oprt_status_t get_elementwise_workspace_size(oprt_operator_descriptor_t desc,
+                                                    size_t *size) {
+    if (desc == nullptr || size == nullptr) {
+        return OPRT_ERR_INVALID_ARG;
+    }
+    *size = desc->workspace_size;
+    return OPRT_SUCCESS;
+}
+
+inline oprt_status_t validate_elementwise_execute_args(oprt_operator_descriptor_t desc,
+                                                       size_t workspace_size,
+                                                       void *out,
+                                                       const std::vector<const void *> &inputs) {
+    if (desc == nullptr || out == nullptr || inputs.empty()) {
+        return OPRT_ERR_INVALID_ARG;
+    }
+    for (const auto *input : inputs) {
+        if (input == nullptr) {
+            return OPRT_ERR_INVALID_ARG;
+        }
+    }
+    if (workspace_size < desc->workspace_size) {
+        return OPRT_ERR_INSUFFICIENT_WORKSPACE;
+    }
+    return OPRT_SUCCESS;
+}
+
+inline oprt_status_t destroy_elementwise_descriptor(oprt_operator_descriptor_t desc) {
+    delete desc;
     return OPRT_SUCCESS;
 }
 

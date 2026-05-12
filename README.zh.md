@@ -2,7 +2,7 @@
 
 这个仓库是一个面向训练的 GPU 算子运行时。它体积很小，但工作流尽量贴近真实的算子库开发流程：
 
-1. 在 `ops/<op>/` 下创建后端实现目录；如果算子可以复用 elementwise 框架，则放到 `ops/elementwise/<op>/`。
+1. 在 `ops/<op>/` 下创建自定义后端实现目录；如果算子选择复用 elementwise 框架，则放到 `ops/elementwise/<op>/`。
 2. 构建系统通过目录约定自动发现源码。
 3. 实现后端专属的 descriptor 生命周期（create、workspace、execute、destroy）。
 4. 提供 Python API，支持 out-of-place、out-variant 和 prepared 执行。
@@ -62,11 +62,16 @@ python tests/run_ops.py --op all --backend nvidia --mode bench
 ./scripts/build_metax.sh test
 ```
 
-TileLang 后端需要安装 `tilelang` Python 包。MetaX 后端使用独立构建产物，构建时应关闭 NVIDIA 变体，并将后端源码放在 `ops/*/metax/*.maca` 或 `ops/elementwise/*/metax/*.maca`。
+TileLang 后端需要安装 `tilelang` Python 包。MetaX 后端使用独立构建产物，构建时应关闭 NVIDIA 变体，并将后端源码放在 `ops/*/metax/*.maca` 或 `ops/elementwise/*/metax/*.maca`。C ABI 暴露统一的 backend 选择接口；当前构建产物只接受已编译进来的 backend，请求未启用 backend 会返回 `not supported`。
 
 ## Elementwise 框架
 
-普通逐元素算子如果共享 shape、stride、broadcast 的执行模型，推荐放在 `ops/elementwise/<op>/<backend>/`。NVIDIA 公共 launcher 位于 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`；每个具体算子只需要提供公开 C API、descriptor 生命周期、dtype dispatch 和一个小的 device functor。`relu` 是教学示例：`negative_slope=0.0` 时等价于标准 ReLU，非 0 时等价于 leaky ReLU。
+训练营支持两条路径：
+
+- 自定义算子路径：放在 `ops/<op>/<backend>/`，适合教学手写 kernel、固定 contiguous fast path、特殊 workspace 或非逐元素结构。`copy` 和 `vector_add` 是这条路径的演示。
+- elementwise 复用路径：放在 `ops/elementwise/<op>/<backend>/`，适合共享 shape、stride、broadcast 执行模型的普通逐元素算子。后续作业可以让学生用这条路径重新实现 `copy` / `add` 类算子。
+
+NVIDIA 公共 launcher 位于 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`；公共 descriptor helper 位于 `include/operator_runtime/detail/elementwise.h`。每个 elementwise 算子通常只需要提供公开 C API、少量 dtype dispatch 和一个 device functor。Python 侧优先用 `ElementwiseOpSpec` 描述输入数、标量参数和 broadcast 语义。`relu` 是 elementwise 教学示例：`negative_slope=0.0` 时等价于标准 ReLU，非 0 时等价于 leaky ReLU。
 
 ## 生产映射
 

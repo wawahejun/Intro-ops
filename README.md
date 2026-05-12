@@ -3,8 +3,8 @@
 This repository is a training-oriented GPU operator runtime. It is intentionally
 small, but its workflow mirrors production operator libraries:
 
-1. Create a directory under `ops/<op>/` with backend implementations, or under
-   `ops/elementwise/<op>/` when the operator can reuse the elementwise framework.
+1. Create a custom backend implementation under `ops/<op>/`, or place the
+   operator under `ops/elementwise/<op>/` when it should reuse the elementwise framework.
 2. The build system auto-discovers sources by directory convention.
 3. Implement a backend-specific descriptor lifecycle (create, workspace, execute, destroy).
 4. Expose a Python API with out-of-place, out-variant, and prepared execution.
@@ -64,11 +64,16 @@ python tests/run_ops.py --op all --backend nvidia --mode bench
 ./scripts/build_metax.sh test
 ```
 
-The TileLang backend requires the `tilelang` Python package. The MetaX backend is built as a separate variant, should use `CAMP_ENABLE_NVIDIA=OFF`, and stores backend sources under `ops/*/metax/*.maca` or `ops/elementwise/*/metax/*.maca`.
+The TileLang backend requires the `tilelang` Python package. The MetaX backend is built as a separate variant, should use `CAMP_ENABLE_NVIDIA=OFF`, and stores backend sources under `ops/*/metax/*.maca` or `ops/elementwise/*/metax/*.maca`. The C ABI exposes a unified backend-selection interface; each build artifact accepts only the backend compiled into it, and returns `not supported` for unavailable backends.
 
 ## Elementwise Framework
 
-Elementwise operators that share the common shape/stride/broadcast execution model should live under `ops/elementwise/<op>/<backend>/`. The shared NVIDIA launcher is in `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`; each operator only needs to provide its public C API, descriptor lifecycle, dtype dispatch, and a small device functor. `relu` is the teaching example: `negative_slope=0.0` behaves like standard ReLU, while non-zero values behave like leaky ReLU.
+The training camp supports two operator paths:
+
+- Custom operators live under `ops/<op>/<backend>/`. This path is useful for teaching hand-written kernels, fixed contiguous fast paths, custom workspace needs, or non-elementwise structures. `copy` and `vector_add` demonstrate this path.
+- Reusable elementwise operators live under `ops/elementwise/<op>/<backend>/`. This path is useful for ordinary elementwise operators that share the shape/stride/broadcast execution model. Later exercises can ask students to reimplement `copy` / `add`-style operators with this path.
+
+The shared NVIDIA launcher is in `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`; shared descriptor helpers live in `include/operator_runtime/detail/elementwise.h`. Each elementwise operator usually only needs to provide its public C API, small dtype dispatch, and a device functor. On the Python side, use `ElementwiseOpSpec` to describe input count, scalar parameters, and broadcast semantics. `relu` is the teaching example: `negative_slope=0.0` behaves like standard ReLU, while non-zero values behave like leaky ReLU.
 
 ## Production Mapping
 

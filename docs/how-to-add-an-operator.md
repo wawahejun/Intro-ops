@@ -2,9 +2,9 @@
 
 ## 目标
 
-在当前项目里，新增一个可运行算子的最小闭环包括四部分：
+在当前项目里，新增一个可运行算子的最小闭环包括四部分。训练营同时保留两条路径：自定义算子路径用于教学手写 kernel 和特殊算子结构，elementwise 复用路径用于普通逐元素算子。
 
-1. 在 `ops/<算子名>/` 下补后端实现；普通逐元素算子优先放到 `ops/elementwise/<算子名>/`。
+1. 在 `ops/<算子名>/` 下补自定义后端实现，或在 `ops/elementwise/<算子名>/` 下补复用 elementwise 框架的实现。
 2. 在 `python/operator_runtime/ops/` 下补 Python API。
 3. 在 `tests/` 下补正确性测试和 benchmark 入口。
 4. 重新构建并验证。
@@ -21,16 +21,16 @@
 5. 是否需要额外参数，例如 `dim`、`scalar`。
 6. 是否需要 workspace。
 
-这一步的目的，是确定后面 C API 和 Python 绑定该按哪种模式实现。
+这一步的目的，是确定后面 C API 和 Python 绑定该按哪种模式实现。不要把“逐元素”简单等同于“必须用 elementwise 框架”：训练营会先用 `copy`、`vector_add` 展示自定义算子写法，再把复用 elementwise 框架作为后续作业和工程化路径。
 
 ## Step 2：创建算子目录
 
 先选择算子目录：
 
-- 普通手写 kernel：放在 `ops/<算子名>/`。
-- 可复用公共 shape/stride/broadcast 逐元素框架的算子：放在 `ops/elementwise/<算子名>/`。
+- 自定义算子：放在 `ops/<算子名>/`。适合教学底层 kernel、固定 contiguous fast path、特殊 workspace、reduce/softmax 等非普通 elementwise 算子。
+- elementwise 复用算子：放在 `ops/elementwise/<算子名>/`。适合共享 shape、stride、broadcast 执行模型的 unary / binary / 多输入逐元素算子。
 
-`relu` 是 elementwise 框架示例，目录为 `ops/elementwise/relu/nvidia/`，公共 NVIDIA launcher 位于 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`。
+`copy` 和 `vector_add` 是自定义算子教学示例。`relu` 是 elementwise 框架示例，目录为 `ops/elementwise/relu/nvidia/`，公共 NVIDIA launcher 位于 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`。
 
 先在选定目录下建立对应后端目录。
 
@@ -49,7 +49,7 @@
 
 `ops/<算子名>/nvidia/` 或 `ops/elementwise/<算子名>/nvidia/` 这一层负责 C++/CUDA 实现。
 
-普通手写 kernel 通常需要这几部分：
+自定义算子通常需要这几部分：
 
 1. kernel 文件
 2. C API 头文件
@@ -57,11 +57,11 @@
 
 这里最关键的是保持现有命名约定一致，因为 Python 侧会按固定符号名去找函数。
 
-如果是 elementwise 算子，不需要每个算子重复写 shape/stride kernel。推荐复用 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`：
+如果是 elementwise 复用算子，不需要每个算子重复写 shape/stride kernel。推荐复用 `include/operator_runtime/detail/elementwise.h` 里的 descriptor helper 和 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`：
 
-1. descriptor 中保存 `oprt::ElementwiseInfo`。
-2. create 阶段调用 `oprt::create_elementwise_info(out, {inputs...}, &info)`。
-3. workspace 返回 `info.workspace_bytes()`。
+1. descriptor 继承 `oprt::ElementwiseDescriptorBase`。
+2. create 阶段调用 `oprt::init_elementwise_descriptor(desc, out, {inputs...})`。
+3. workspace 复用 `oprt::get_elementwise_workspace_size`。
 4. execute 阶段只做 dtype dispatch，并调用 `oprt::elementwise::nvidia::launch<T, N>(...)`。
 5. 算子自身只提供 device functor，例如 `relu` 的 `value > 0 ? value : value * negative_slope`。
 
@@ -95,8 +95,18 @@ Python 入口放在 `python/operator_runtime/ops/<算子名>.py`。
 2. `<算子名>_`：接收调用方提供的输出 tensor，执行一次。
 3. `<算子名>`：自动分配输出 tensor，再调用 `<算子名>_`。
 
-如果你的算子签名和现有 unary、binary、reduce-like 模式一致，就沿用现有 helper。
-如果签名比较特殊，例如带额外标量参数，就单独写一层绑定。
+如果你的算子是自定义算子，并且签名和现有 unary、binary、reduce-like 模式一致，就沿用现有 helper。
+如果你的算子是 elementwise 复用算子，优先在 Python 里定义 `ElementwiseOpSpec`，再调用 `prepare_elementwise_op`。这个 spec 描述算子名、输入数、标量参数和 broadcast 语义，避免为每个 elementwise 算子重复写 FFI 绑定和基础校验。
+
+示例：
+
+```python
+_MY_OP_SPEC = ElementwiseOpSpec(
+    name="my_op",
+    input_count=1,
+    scalar_argtypes=(ctypes.c_float,),
+)
+```
 
 ## Step 5：导出到公共 API
 
@@ -191,13 +201,13 @@ API contract 测试主要覆盖 shape 不匹配、dtype 不匹配、非 contiguo
 
 ## 现有模板怎么选
 
-- `copy`：适合最简单的单输入单输出流程。
-- `vector_add`：适合标准 contiguous 双输入算子。
+- `copy`：适合最简单的自定义单输入单输出流程。
+- `vector_add`：适合标准 contiguous 双输入自定义算子。
 - `relu`：适合复用 elementwise 框架的单输入逐元素算子，也展示了额外标量参数 `negative_slope` 的 C/Python 绑定方式。
 - `reduce_sum`：适合带 reduce 维度的算子。
 - `softmax`：适合带更明确 shape 约束和归一化逻辑的算子。
 
-如果新算子本质上是普通 elementwise，优先参考 `relu` 和 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`；如果只想写最简单 contiguous kernel，再参考 `vector_add`。
+如果新算子本质上是普通 elementwise，优先参考 `relu`、`ElementwiseOpSpec` 和 `ops/common/elementwise/nvidia/elementwise_nvidia.cuh`；如果课程目标是练习手写 contiguous kernel，再参考 `copy` 或 `vector_add` 的自定义路径。
 
 ## 最终检查清单
 

@@ -2,29 +2,48 @@ from __future__ import annotations
 
 import ctypes
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Sequence
 
 from operator_runtime.backend import Backend
+from operator_runtime.backend import normalize_backend
 
 from .loader import load_library
 from .tensor_view import TensorView
 
 Status = ctypes.c_int
 Descriptor = ctypes.c_void_p
+OPRT_BACKEND_NVIDIA = 1
+OPRT_BACKEND_METAX = 2
 
 
 class OperatorRuntimeError(RuntimeError):
     pass
 
 
-def check_status(status: int) -> None:
+def _backend_code(backend: str | Backend) -> int:
+    normalized = normalize_backend(backend)
+    if normalized is Backend.NVIDIA:
+        return OPRT_BACKEND_NVIDIA
+    if normalized is Backend.METAX:
+        return OPRT_BACKEND_METAX
+    raise NotImplementedError(f"backend {normalized.value} is not runnable through the C ABI")
+
+
+def check_status(status: int, lib=None) -> None:
     if status == 0:
         return
-    lib = load_library()
+    if lib is None:
+        lib = load_library()
     lib.oprt_status_string.argtypes = [ctypes.c_int]
     lib.oprt_status_string.restype = ctypes.c_char_p
     message = lib.oprt_status_string(status).decode("utf-8")
     raise OperatorRuntimeError(message)
+
+
+def set_runtime_backend(lib, backend: str | Backend) -> None:
+    lib.oprt_set_backend.argtypes = [ctypes.c_int]
+    lib.oprt_set_backend.restype = Status
+    check_status(lib.oprt_set_backend(_backend_code(backend)), lib)
 
 
 @dataclass(frozen=True)
@@ -41,14 +60,20 @@ def _missing_symbol_error(name: str, symbol: str, exc: AttributeError) -> Operat
     ) from exc
 
 
-def bind_unary(name: str, backend: str | Backend = Backend.NVIDIA) -> CFunctions:
-    lib = load_library()
+def _bind_lifecycle(
+    name: str,
+    backend: str | Backend,
+    create_argtypes: Sequence[object],
+    execute_argtypes: Sequence[object],
+) -> CFunctions:
+    lib = load_library(backend)
+    set_runtime_backend(lib, backend)
     create_symbol = f"oprt_create_{name}_descriptor"
     try:
         create = getattr(lib, create_symbol)
     except AttributeError as exc:
         _missing_symbol_error(name, create_symbol, exc)
-    create.argtypes = [ctypes.POINTER(Descriptor), ctypes.POINTER(TensorView), ctypes.POINTER(TensorView)]
+    create.argtypes = [ctypes.POINTER(Descriptor), *create_argtypes]
     create.restype = Status
 
     workspace_symbol = f"oprt_get_{name}_workspace_size"
@@ -64,14 +89,7 @@ def bind_unary(name: str, backend: str | Backend = Backend.NVIDIA) -> CFunctions
         execute = getattr(lib, execute_symbol)
     except AttributeError as exc:
         _missing_symbol_error(name, execute_symbol, exc)
-    execute.argtypes = [
-        Descriptor,
-        ctypes.c_void_p,
-        ctypes.c_size_t,
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-    ]
+    execute.argtypes = [Descriptor, ctypes.c_void_p, ctypes.c_size_t, *execute_argtypes, ctypes.c_void_p]
     execute.restype = Status
 
     destroy_symbol = f"oprt_destroy_{name}_descriptor"
@@ -82,149 +100,41 @@ def bind_unary(name: str, backend: str | Backend = Backend.NVIDIA) -> CFunctions
     destroy.argtypes = [Descriptor]
     destroy.restype = Status
     return CFunctions(create, workspace, execute, destroy)
+
+
+def bind_elementwise(
+    name: str,
+    input_count: int,
+    scalar_argtypes: Sequence[object] = (),
+    backend: str | Backend = Backend.NVIDIA,
+) -> CFunctions:
+    if input_count <= 0:
+        raise ValueError("elementwise operators require at least one input")
+    tensor_views = [ctypes.POINTER(TensorView)] * (input_count + 1)
+    data_ptrs = [ctypes.c_void_p] * (input_count + 1)
+    return _bind_lifecycle(name, backend, [*tensor_views, *scalar_argtypes], data_ptrs)
+
+
+def bind_unary(name: str, backend: str | Backend = Backend.NVIDIA) -> CFunctions:
+    return bind_elementwise(name, 1, backend=backend)
 
 
 def bind_relu(backend: str | Backend = Backend.NVIDIA) -> CFunctions:
-    lib = load_library()
-    name = "relu"
-    create_symbol = "oprt_create_relu_descriptor"
-    try:
-        create = getattr(lib, create_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, create_symbol, exc)
-    create.argtypes = [
-        ctypes.POINTER(Descriptor),
-        ctypes.POINTER(TensorView),
-        ctypes.POINTER(TensorView),
-        ctypes.c_float,
-    ]
-    create.restype = Status
-
-    workspace_symbol = "oprt_get_relu_workspace_size"
-    try:
-        workspace = getattr(lib, workspace_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, workspace_symbol, exc)
-    workspace.argtypes = [Descriptor, ctypes.POINTER(ctypes.c_size_t)]
-    workspace.restype = Status
-
-    execute_symbol = "oprt_execute_relu"
-    try:
-        execute = getattr(lib, execute_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, execute_symbol, exc)
-    execute.argtypes = [
-        Descriptor,
-        ctypes.c_void_p,
-        ctypes.c_size_t,
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-    ]
-    execute.restype = Status
-
-    destroy_symbol = "oprt_destroy_relu_descriptor"
-    try:
-        destroy = getattr(lib, destroy_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, destroy_symbol, exc)
-    destroy.argtypes = [Descriptor]
-    destroy.restype = Status
-    return CFunctions(create, workspace, execute, destroy)
+    return bind_elementwise("relu", 1, [ctypes.c_float], backend)
 
 
 def bind_binary(name: str, backend: str | Backend = Backend.NVIDIA) -> CFunctions:
-    lib = load_library()
-    create_symbol = f"oprt_create_{name}_descriptor"
-    try:
-        create = getattr(lib, create_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, create_symbol, exc)
-    create.argtypes = [
-        ctypes.POINTER(Descriptor),
-        ctypes.POINTER(TensorView),
-        ctypes.POINTER(TensorView),
-        ctypes.POINTER(TensorView),
-    ]
-    create.restype = Status
-
-    workspace_symbol = f"oprt_get_{name}_workspace_size"
-    try:
-        workspace = getattr(lib, workspace_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, workspace_symbol, exc)
-    workspace.argtypes = [Descriptor, ctypes.POINTER(ctypes.c_size_t)]
-    workspace.restype = Status
-
-    execute_symbol = f"oprt_execute_{name}"
-    try:
-        execute = getattr(lib, execute_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, execute_symbol, exc)
-    execute.argtypes = [
-        Descriptor,
-        ctypes.c_void_p,
-        ctypes.c_size_t,
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-    ]
-    execute.restype = Status
-
-    destroy_symbol = f"oprt_destroy_{name}_descriptor"
-    try:
-        destroy = getattr(lib, destroy_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, destroy_symbol, exc)
-    destroy.argtypes = [Descriptor]
-    destroy.restype = Status
-    return CFunctions(create, workspace, execute, destroy)
+    return bind_elementwise(name, 2, backend=backend)
 
 
 def bind_reduce_like(name: str, backend: str | Backend = Backend.NVIDIA) -> CFunctions:
-    lib = load_library()
-    create_symbol = f"oprt_create_{name}_descriptor"
-    try:
-        create = getattr(lib, create_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, create_symbol, exc)
-    create.argtypes = [
-        ctypes.POINTER(Descriptor),
-        ctypes.POINTER(TensorView),
-        ctypes.POINTER(TensorView),
-        ctypes.c_int64,
-    ]
-    create.restype = Status
-
-    workspace_symbol = f"oprt_get_{name}_workspace_size"
-    try:
-        workspace = getattr(lib, workspace_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, workspace_symbol, exc)
-    workspace.argtypes = [Descriptor, ctypes.POINTER(ctypes.c_size_t)]
-    workspace.restype = Status
-
-    execute_symbol = f"oprt_execute_{name}"
-    try:
-        execute = getattr(lib, execute_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, execute_symbol, exc)
-    execute.argtypes = [
-        Descriptor,
-        ctypes.c_void_p,
-        ctypes.c_size_t,
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-        ctypes.c_void_p,
-    ]
-    execute.restype = Status
-
-    destroy_symbol = f"oprt_destroy_{name}_descriptor"
-    try:
-        destroy = getattr(lib, destroy_symbol)
-    except AttributeError as exc:
-        _missing_symbol_error(name, destroy_symbol, exc)
-    destroy.argtypes = [Descriptor]
-    destroy.restype = Status
-    return CFunctions(create, workspace, execute, destroy)
+    return _bind_lifecycle(
+        name,
+        backend,
+        [
+            ctypes.POINTER(TensorView),
+            ctypes.POINTER(TensorView),
+            ctypes.c_int64,
+        ],
+        [ctypes.c_void_p, ctypes.c_void_p],
+    )

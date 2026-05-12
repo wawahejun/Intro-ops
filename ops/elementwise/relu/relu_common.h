@@ -5,10 +5,7 @@
 
 namespace oprt::elementwise {
 
-struct ReluDescriptor final : oprt_operator_descriptor {
-    oprt_tensor_view_t out_view{};
-    oprt_tensor_view_t in_view{};
-    oprt::ElementwiseInfo info;
+struct ReluDescriptor final : oprt::ElementwiseDescriptorBase {
     float negative_slope = 0.0f;
 
     const char *op_name() const override {
@@ -30,29 +27,20 @@ inline oprt_status_t create_relu_descriptor_common(
         return OPRT_ERR_INVALID_ARG;
     }
 
-    oprt::ElementwiseInfo info;
-    auto status = oprt::create_elementwise_info(out, {in}, &info);
+    auto *typed = new ReluDescriptor();
+    auto status = oprt::init_elementwise_descriptor(typed, out, {in});
     if (status != OPRT_SUCCESS) {
+        delete typed;
         return status;
     }
-
-    auto *typed = new ReluDescriptor();
-    typed->out_view = *out;
-    typed->in_view = *in;
-    typed->info = std::move(info);
     typed->negative_slope = negative_slope;
-    typed->workspace_size = typed->info.workspace_bytes();
     *desc = typed;
     return OPRT_SUCCESS;
 }
 
 inline oprt_status_t get_relu_workspace_size_common(oprt_operator_descriptor_t desc,
                                                     size_t *size) {
-    if (desc == nullptr || size == nullptr) {
-        return OPRT_ERR_INVALID_ARG;
-    }
-    *size = desc->workspace_size;
-    return OPRT_SUCCESS;
+    return oprt::get_elementwise_workspace_size(desc, size);
 }
 
 inline oprt_status_t validate_relu_execute_args(oprt_operator_descriptor_t desc,
@@ -62,15 +50,11 @@ inline oprt_status_t validate_relu_execute_args(oprt_operator_descriptor_t desc,
     if (desc == nullptr || out == nullptr || in == nullptr) {
         return OPRT_ERR_INVALID_ARG;
     }
-    if (workspace_size < desc->workspace_size) {
-        return OPRT_ERR_INSUFFICIENT_WORKSPACE;
-    }
-    return OPRT_SUCCESS;
+    return oprt::validate_elementwise_execute_args(desc, workspace_size, out, {in});
 }
 
 inline oprt_status_t destroy_relu_descriptor_common(oprt_operator_descriptor_t desc) {
-    delete desc;
-    return OPRT_SUCCESS;
+    return oprt::destroy_elementwise_descriptor(desc);
 }
 
 } // namespace oprt::elementwise
