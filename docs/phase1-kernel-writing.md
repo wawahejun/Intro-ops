@@ -93,11 +93,14 @@
 
 ```bash
 # NVIDIA kernel（需要先重新编译）
-./scripts/build_nvidia.sh build
-CAMP_BUILD_DIR=/workspace/build-nvidia pytest tests/op_tests/test_<算子名>.py -v --backend nvidia
+bash scripts/build_nvidia.sh build
+PYTHONPATH=python:. CAMP_BUILD_DIR=build-nvidia pytest tests/op_tests/test_<算子名>.py -v --backend nvidia
 
-# TileLang kernel
-CAMP_BUILD_DIR=/workspace/build-nvidia pytest tests/op_tests/test_<算子名>.py -v --backend tilelang
+# TileLang kernel（不需要编译）
+PYTHONPATH=python:. CAMP_BUILD_DIR=build-nvidia pytest tests/op_tests/test_<算子名>.py -v --backend tilelang
+
+# 同时跑正确性 + benchmark
+PYTHONPATH=python:. CAMP_BUILD_DIR=build-nvidia python tests/run_ops.py --op <算子名> --backend nvidia --mode all
 ```
 
 四个算子两种后端全部通过，阶段一完成。

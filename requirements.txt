@@ -3,8 +3,12 @@
 # Runtime and benchmarking (required)
 torch>=2.0
 
-# TileLang backend (required)
+# TileLang backend (optional)
 tilelang
+
+# Build tools
+cmake>=3.22
+ninja
 
 # Testing framework
 pytest>=7.0
