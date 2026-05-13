@@ -9,6 +9,8 @@ CUDA_PATH="${CUDA_PATH:-${CUCC_PATH}}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 CMAKE_GENERATOR="${CMAKE_GENERATOR:-Ninja}"
 CAMP_FORCE_RECONFIGURE="${CAMP_FORCE_RECONFIGURE:-0}"
+CAMP_USE_TILELANG_METAX="${CAMP_USE_TILELANG_METAX:-0}"
+CAMP_TILELANG_SOURCE_ROOT="${CAMP_TILELANG_SOURCE_ROOT:-/root/tilelang-metax}"
 
 MODE="${1:-build}"
 
@@ -16,6 +18,23 @@ export MACA_PATH
 export CUCC_PATH
 export CUDA_PATH
 export LD_LIBRARY_PATH="${MACA_PATH}/lib:${LD_LIBRARY_PATH:-}"
+
+tilelang_env() {
+  if [[ "${CAMP_USE_TILELANG_METAX}" != "1" ]]; then
+    return 0
+  fi
+  if [[ ! -d "${CAMP_TILELANG_SOURCE_ROOT}" ]]; then
+    echo "TileLang source root not found: ${CAMP_TILELANG_SOURCE_ROOT}" >&2
+    return 1
+  fi
+  if [[ ! -d "${CAMP_TILELANG_SOURCE_ROOT}/build/lib" ]]; then
+    echo "TileLang source build output not found: ${CAMP_TILELANG_SOURCE_ROOT}/build/lib" >&2
+    echo "Build /root/tilelang-metax first with USE_MACA=ON cmake -S ... -B ... && make -C build" >&2
+    return 1
+  fi
+  export PYTHONPATH="${CAMP_TILELANG_SOURCE_ROOT}:${ROOT}/python:${ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
+  export LD_LIBRARY_PATH="${CAMP_TILELANG_SOURCE_ROOT}/build/lib:${MACA_PATH}/lib:${LD_LIBRARY_PATH:-}"
+}
 
 prepare_build_dir() {
   mkdir -p "${BUILD_DIR}"
@@ -38,18 +57,31 @@ build() {
 }
 
 test_pytest() {
-  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" -m pytest "${ROOT}/tests" -v --backend metax
+  env PYTHONPATH="${ROOT}/python:${ROOT}" CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" -m pytest "${ROOT}/tests" -v --backend metax
 }
 
 test_run_ops() {
-  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/tests/run_ops.py" --op all --backend metax --mode all
+  env PYTHONPATH="${ROOT}/python:${ROOT}" CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/tests/run_ops.py" --op all --backend metax --mode all
 }
 
 test_examples() {
-  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/01_copy.py" --backend metax
-  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/02_vector_add.py" --backend metax
-  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/03_reduce_sum.py" --backend metax
-  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/04_softmax.py" --backend metax
+  env PYTHONPATH="${ROOT}/python:${ROOT}" CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/01_copy.py" --backend metax
+  env PYTHONPATH="${ROOT}/python:${ROOT}" CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/02_vector_add.py" --backend metax
+  env PYTHONPATH="${ROOT}/python:${ROOT}" CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/03_reduce_sum.py" --backend metax
+  env PYTHONPATH="${ROOT}/python:${ROOT}" CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/04_softmax.py" --backend metax
+}
+
+test_tilelang() {
+  tilelang_env
+  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" -m pytest "${ROOT}/tests/op_tests/test_copy.py" -v --backend tilelang
+  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" -m pytest "${ROOT}/tests/op_tests/test_vector_add.py" -v --backend tilelang
+  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" -m pytest "${ROOT}/tests/op_tests/test_reduce_sum.py" -v --backend tilelang
+  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" -m pytest "${ROOT}/tests/op_tests/test_softmax.py" -v --backend tilelang
+  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/01_copy.py" --backend tilelang
+  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/02_vector_add.py" --backend tilelang
+  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/03_reduce_sum.py" --backend tilelang
+  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/04_softmax.py" --backend tilelang
+  env CAMP_BUILD_DIR="${BUILD_DIR}" "${PYTHON_BIN}" "${ROOT}/examples/05_tilelang_copy_modes.py"
 }
 
 case "${MODE}" in
@@ -61,6 +93,8 @@ case "${MODE}" in
     echo "MACA_PATH=${MACA_PATH}"
     echo "CUCC_PATH=${CUCC_PATH}"
     echo "CUDA_PATH=${CUDA_PATH}"
+    echo "CAMP_USE_TILELANG_METAX=${CAMP_USE_TILELANG_METAX}"
+    echo "CAMP_TILELANG_SOURCE_ROOT=${CAMP_TILELANG_SOURCE_ROOT}"
     ;;
   configure)
     configure
@@ -73,6 +107,9 @@ case "${MODE}" in
     test_pytest
     test_run_ops
     test_examples
+    if [[ "${CAMP_USE_TILELANG_METAX}" == "1" ]]; then
+      test_tilelang
+    fi
     ;;
   all)
     configure
@@ -80,6 +117,9 @@ case "${MODE}" in
     test_pytest
     test_run_ops
     test_examples
+    if [[ "${CAMP_USE_TILELANG_METAX}" == "1" ]]; then
+      test_tilelang
+    fi
     ;;
   clean)
     rm -rf "${BUILD_DIR}"
